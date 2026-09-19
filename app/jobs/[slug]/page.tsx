@@ -3,8 +3,8 @@ import type {Metadata} from "next";
 import Link from "next/link";
 import {getActiveJobs,getJob,descFor,titleFor} from "../../../lib/jobs";
 
-export const revalidate=3600;
-export async function generateStaticParams(){return getActiveJobs().slice(0,2000).map(j=>({slug:j.slug}))}
+export const dynamic="force-dynamic";
+export const revalidate=0;
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
   const {slug}=await params;const j=getJob(slug);if(!j)return {};
   return {title:titleFor(j),description:descFor(j),alternates:{canonical:"/jobs/"+j.slug},robots:{index:true,follow:true}};
