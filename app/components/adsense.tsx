@@ -1,0 +1,1 @@
+import Script from "next/script";export function AdSense(){const id=process.env.NEXT_PUBLIC_ADSENSE_ID;if(!id)return null;return <Script id="adsense" async strategy="afterInteractive" src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${id}`} crossOrigin="anonymous"/>}
