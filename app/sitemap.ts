@@ -2,7 +2,7 @@ import type {MetadataRoute} from "next";
 import {getActiveJobs} from "../lib/jobs";
 function slugify(v:string){return v.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
 export default function sitemap():MetadataRoute.Sitemap{
-  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news.onrender.com";const jobs=getActiveJobs();
+  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news-prod.onrender.com";const jobs=getActiveJobs();
   const typePages=new Set(jobs.filter(j=>j.type).map(j=>j.type));const locCounts=new Map<string,number>();const catCounts=new Map<string,number>();
   for(const j of jobs){locCounts.set(slugify(j.location),(locCounts.get(slugify(j.location))||0)+1);catCounts.set(slugify(j.category),(catCounts.get(slugify(j.category))||0)+1);}
   const locations=[...locCounts].filter(([,n])=>n>=3).map(([s])=>({url:base+"/jobs/location/"+s,lastModified:new Date(),priority:.65}));
