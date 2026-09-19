@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound(){return <main className="container section"><div className="empty"><h1>Opportunity not found</h1><p>This listing may have expired or been removed from the active index.</p><Link className="btn" href="/jobs">Browse current jobs</Link></div></main>}
