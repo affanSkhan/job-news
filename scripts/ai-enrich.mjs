@@ -1,51 +1,10 @@
-import fs from "node:fs/promises";
-
-const token=process.env.HF_TOKEN;
-if(!token){
-  console.log("HF_TOKEN not configured; deterministic ingestion remains enabled.");
-  process.exit(0);
-}
-
-const model=process.env.HF_MODEL||"Qwen/Qwen3-0.6B:fastest";
-const jobs=JSON.parse(await fs.readFile("data/jobs.json","utf8"));
-const fresh=jobs.filter(j=>!j.aiSummary).slice(0,30);
-
-async function enrich(job){
-  const prompt=[
-    "Return strict JSON only with keys summary and highlights.",
-    "Do not invent facts. Use only the supplied source text.",
-    "summary: <= 35 words. highlights: <= 4 short strings.",
-    "TITLE: "+job.title,
-    "COMPANY: "+job.company,
-    "LOCATION: "+job.location,
-    "DESCRIPTION: "+job.description.slice(0,6500)
-  ].join("\n");
-  const r=await fetch("https://router.huggingface.co/v1/chat/completions",{
-    method:"POST",
-    headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model,
-      messages:[{role:"user",content:prompt}],
-      temperature:0.1,
-      max_tokens:220
-    })
-  });
-  if(!r.ok) throw new Error("HF "+r.status);
-  const j=await r.json();
-  const text=j.choices?.[0]?.message?.content||"";
-  const match=text.match(/\{[\s\S]*\}/);
-  if(!match) return null;
-  try{return JSON.parse(match[0]);}catch{return null;}
-}
-
-for(const job of fresh){
-  try{
-    const x=await enrich(job);
-    if(x){
-      job.aiSummary=String(x.summary||"").slice(0,500);
-      job.aiHighlights=Array.isArray(x.highlights)?x.highlights.map(String).slice(0,4):[];
-    }
-  }catch(e){console.error("AI failed",job.id,e?.message||e);}
-}
+import fs from "node:fs/promises";import {createClient} from "@supabase/supabase-js";
+const hf=process.env.HF_TOKEN,openai=process.env.OPENAI_API_KEY;if(!hf&&!openai){console.log("No AI credential configured; enrichment safely skipped.");process.exit(0)}
+const jobs=JSON.parse(await fs.readFile("data/jobs.json","utf8")),targets=jobs.filter(j=>!j.aiSummary).slice(0,80),hfModel=process.env.HF_MODEL||"Qwen/Qwen3-0.6B:fastest",openaiModel=process.env.OPENAI_CHAT_MODEL||"gpt-4o-mini";
+async function enrich(job){const prompt=["Return strict JSON only with keys summary and highlights.","Do not invent facts. Use only supplied source text.","summary <= 35 words; highlights <= 4 short factual strings.","TITLE: "+job.title,"COMPANY: "+job.company,"LOCATION: "+job.location,"DESCRIPTION: "+job.description.slice(0,8000)].join("\n");
+if(hf){const r=await fetch("https://router.huggingface.co/v1/chat/completions",{method:"POST",headers:{Authorization:"Bearer "+hf,"Content-Type":"application/json"},body:JSON.stringify({model:hfModel,messages:[{role:"user",content:prompt}],temperature:.1,max_tokens:220})});if(r.ok){const j=await r.json(),t=j.choices?.[0]?.message?.content||"",m=t.match(/\{[\s\S]*\}/);if(m)try{return JSON.parse(m[0])}catch{}}}
+if(openai){const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{Authorization:"Bearer "+openai,"Content-Type":"application/json"},body:JSON.stringify({model:openaiModel,messages:[{role:"system",content:"Summarize job listings without inventing facts. Return JSON with summary and highlights."},{role:"user",content:prompt}],temperature:.1,response_format:{type:"json_object"}})});if(r.ok){const j=await r.json(),t=j.choices?.[0]?.message?.content||"{}";try{return JSON.parse(t)}catch{}}}return null}
+for(const job of targets)try{const x=await enrich(job);if(x){job.aiSummary=String(x.summary||"").slice(0,500);job.aiHighlights=Array.isArray(x.highlights)?x.highlights.map(String).slice(0,4):[]}}catch(e){console.error("AI failed",job.id,e?.message||e)}
 await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"\n");
-console.log("AI-enriched",fresh.length,"new records");
+const url=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(url&&key){const sb=createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}});for(const job of targets.filter(j=>j.aiSummary))await sb.from("jobs").update({ai_summary:job.aiSummary,ai_highlights:job.aiHighlights||[],updated_at:new Date().toISOString()}).eq("id",job.id)}
+console.log("AI-enriched",targets.length,"candidates");

@@ -1,0 +1,1 @@
+"use client";import {createBrowserSupabase} from "../../lib/supabase/client";export default function SignOut(){return <button className="chip" onClick={async()=>{await createBrowserSupabase().auth.signOut();location.href="/"}}>Sign out</button>}

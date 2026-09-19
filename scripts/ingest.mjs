@@ -1,108 +1,19 @@
-import fs from "node:fs/promises";
-import crypto from "node:crypto";
-
-const SOURCES=JSON.parse(await fs.readFile("data/sources.json","utf8"));
-const OUT="data/jobs.json";
-const now=new Date().toISOString();
-
-const strip=(s="")=>s
-  .replace(/<script[\s\S]*?<\/script>/gi," ")
-  .replace(/<style[\s\S]*?<\/style>/gi," ")
-  .replace(/<[^>]+>/g," ")
-  .replace(/&nbsp;/gi," ")
-  .replace(/&amp;/gi,"&")
-  .replace(/&quot;/gi,'"')
-  .replace(/&#39;/gi,"'")
-  .replace(/\s+/g," ").trim();
-
-const slug=s=>s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70);
-const hash=s=>crypto.createHash("sha1").update(s).digest("hex").slice(0,10);
-
-function inferType(t){
-  if(/intern|internship|graduate intern/i.test(t)) return "internship";
-  if(/fellow|fellowship/i.test(t)) return "fellowship";
-  if(/contract|contractor/i.test(t)) return "contract";
-  if(/part[- ]time/i.test(t)) return "part-time";
-  if(/full[- ]time/i.test(t)) return "full-time";
-  return "other";
-}
-function inferMode(location,title,desc=""){
-  const s=(location+" "+title+" "+desc).toLowerCase();
-  if(/remote|work from home|distributed/.test(s)) return "remote";
-  if(/hybrid/.test(s)) return "hybrid";
-  if(/on[- ]site|onsite|in office/.test(s)) return "onsite";
-  return "unknown";
-}
-function salary(s,min,max,currency){
-  if(s) return s;
-  if(min||max) return [min,max].filter(Boolean).map(v=>Number(v).toLocaleString("en-IN")).join("–")+(currency?" "+currency:"");
-  return "Not disclosed";
-}
-function common(x,sourceName){
-  const raw=x.description||x.jobDescription||"";
-  const pub=x.publishedAt||x.pubDate||x.publication_date||x.created_at||now;
-  let published=now;
-  try{published=typeof pub==="number"?new Date(pub*1000).toISOString():new Date(pub).toISOString();}catch{}
-  const title=x.title||x.jobTitle||"Opportunity";
-  const company=x.company||x.company_name||x.companyName||"Unknown company";
-  const location=x.location||x.jobGeo||x.candidate_required_location||"Remote";
-  const min=Number(x.salaryMin||x.annualSalaryMin||x.salary_min||0)||undefined;
-  const max=Number(x.salaryMax||x.annualSalaryMax||x.salary_max||0)||undefined;
-  const currency=x.salaryCurrency||x.salaryCurrencyCode||"";
-  const url=x.url||x.jobUrl||x.applyUrl;
-  const id=hash((url||title+company+location).toLowerCase());
-  const ts=Date.parse(published);
-  return {
-    id,title,slug:slug(title+"-"+company)+"-"+id,company,description:strip(raw).slice(0,14000),
-    location:String(location),workMode:inferMode(String(location),title,strip(raw)),type:inferType(title),
-    salary:salary(x.salary,min,max,currency),salaryMin:min,salaryMax:max,currency,
-    skills:[...(x.tags||x.skills||[])].filter(Boolean).slice(0,20),
-    category:x.category||x.jobIndustry||"Other",experience:x.jobLevel||x.experience||"Not specified",
-    publishedAt:published,updatedAt:now,sourceName,sourceUrl:url,applyUrl:url,verified:true,
-    freshness:Date.now()-ts<86400000?"today":Date.now()-ts<604800000?"this-week":"older",
-    tags:[]
-  };
-}
-async function getJson(url){
-  const r=await fetch(url,{headers:{"user-agent":"JobNewsBot/1.0 (+https://job-news.onrender.com)"}});
-  if(!r.ok) throw new Error(url+" "+r.status);
-  return r.json();
-}
-async function collect(src){
-  if(src.kind==="remotive"){
-    const j=await getJson(src.url);
-    return (j.jobs||[]).map(x=>common({
-      title:x.title,company_name:x.company_name,description:x.description,publication_date:x.publication_date,
-      candidate_required_location:x.candidate_required_location,url:x.url,tags:x.tags,salary:x.salary
-    },src.name));
-  }
-  if(src.kind==="arbeitnow"){
-    const j=await getJson(src.url);
-    return (j.data||[]).map(x=>common({
-      title:x.title,company_name:x.company_name,description:x.description,location:x.location,
-      created_at:x.created_at,url:x.url,tags:x.tags
-    },src.name));
-  }
-  if(src.kind==="jobicy"){
-    const j=await getJson(src.url);
-    return (j.jobs||[]).map(x=>common(x,src.name));
-  }
-  return [];
-}
-
-const previous=JSON.parse(await fs.readFile(OUT,"utf8").catch(()=>"[ ]"));
-const byKey=new Map(previous.map(j=>[j.id,j]));
-for(const src of SOURCES.filter(s=>s.enabled)){
-  try{
-    for(const j of await collect(src)){
-      const old=byKey.get(j.id);
-      byKey.set(j.id,{...(old||{}),...j,updatedAt:now});
-    }
-  }catch(e){console.error("source failed",src.id,e?.message||e);}
-}
-const cutoff=Date.now()-45*24*60*60*1000;
-let jobs=[...byKey.values()].filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff);
-jobs.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
-jobs=jobs.slice(0,2500);
-await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
-console.log("JobNews ingestion:",jobs.length,"active jobs");
+import fs from "node:fs/promises";import crypto from "node:crypto";import {createClient} from "@supabase/supabase-js";
+const baseSources=JSON.parse(await fs.readFile("data/sources.json","utf8")),now=new Date().toISOString(),OUT="data/jobs.json";
+const strip=(s="")=>String(s).replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/\s+/g," ").trim();
+const slug=s=>String(s).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70),hash=s=>crypto.createHash("sha1").update(s).digest("hex").slice(0,14);
+const value=(x,...keys)=>{for(const k of keys){if(x?.[k]!==undefined&&x?.[k]!==null&&x?.[k]!=="")return x[k]}};
+function inferType(t){if(/intern|internship|graduate intern/i.test(t))return"internship";if(/fellow/i.test(t))return"fellowship";if(/contract/i.test(t))return"contract";if(/part[- ]time/i.test(t))return"part-time";if(/full[- ]time/i.test(t))return"full-time";return"other"}
+function inferMode(location,title,desc=""){const s=(location+" "+title+" "+desc).toLowerCase();if(/remote|work from home|distributed|worldwide/.test(s))return"remote";if(/hybrid/.test(s))return"hybrid";if(/on[- ]site|onsite|in office/.test(s))return"onsite";return"unknown"}
+function dateOrNow(v){try{const d=typeof v==="number"?new Date(v*1000):new Date(v);return Number.isNaN(d.getTime())?now:d.toISOString()}catch{return now}}
+function common(x,sourceName,sourceKind){const description=strip(value(x,"description","jobDescription","content","excerpt")||""),title=String(value(x,"title","jobTitle")||"Opportunity"),company=String(value(x,"company","company_name","companyName")||"Unknown company"),location=String(value(x,"location","jobGeo","candidate_required_location")||"Remote"),published=dateOrNow(value(x,"publishedAt","pubDate","publication_date","created_at","updated_at")),updated=dateOrNow(value(x,"updatedAt","updated_at","pubDate","publication_date","created_at")||published),url=String(value(x,"url","jobUrl","applyUrl","applicationLink","absolute_url")||""),fingerprint=hash([title.toLowerCase(),company.toLowerCase(),location.toLowerCase()].join("|")),min=Number(value(x,"salaryMin","annualSalaryMin","salary_min","minSalary")||0)||undefined,max=Number(value(x,"salaryMax","annualSalaryMax","salary_max","maxSalary")||0)||undefined,currency=String(value(x,"salaryCurrency","salaryCurrencyCode","currency")||""),salaryText=String(value(x,"salary","salary_text")||(min||max?[min,max].filter(Boolean).map(v=>Number(v).toLocaleString("en-IN")).join("–")+(currency?" "+currency:""):"Not disclosed")),ts=Date.parse(published);
+return{id:fingerprint,fingerprint,slug:slug(title+"-"+company)+"-"+fingerprint,title,company,description:description.slice(0,18000),location,workMode:inferMode(location,title,description),type:inferType(title),salary:salaryText,salaryMin:min,salaryMax:max,currency,skills:[...(Array.isArray(x?.tags)?x.tags:[]),...(Array.isArray(x?.skills)?x.skills:[]),...(Array.isArray(x?.keywords)?x.keywords:[])].map(String).filter(Boolean).slice(0,25),category:Array.isArray(x?.category)?String(x.category[0]||"Other"):String(x?.category||x?.jobIndustry||"Other"),experience:String(x?.jobLevel||x?.experience||x?.seniority||"Not specified"),publishedAt:published,updatedAt:updated,sourceName,sourceKind,sourceUrl:url,applyUrl:url,verified:true,freshness:Date.now()-ts<86400000?"today":Date.now()-ts<604800000?"this-week":"older",tags:[],raw:x}}
+async function get(url,headers={}){const r=await fetch(url,{headers:{"user-agent":"JobNewsBot/2.0 (+https://job-news-prod.onrender.com)",...headers}});if(!r.ok)throw new Error(url+" "+r.status);return r}async function json(url,headers={}){return(await get(url,headers)).json()}async function text(url){return(await get(url)).text()}
+function xmlItems(xml){return[...xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)].map(m=>m[1])}function xmlTag(s,tag){const m=s.match(new RegExp("<"+tag+"[^>]*>([\\s\\S]*?)<\\/"+tag+">","i"));return m?strip(m[1].replace(/<!\[CDATA\[|\]\]>/g,"")):""}
+async function collect(src){if(src.kind==="remotive"){const j=await json(src.url);return(j.jobs||[]).map(x=>common(x,src.name,src.kind))}if(src.kind==="arbeitnow"){const j=await json(src.url);return(j.data||[]).map(x=>common(x,src.name,src.kind))}if(src.kind==="jobicy"){const j=await json(src.url);return(j.jobs||[]).map(x=>common(x,src.name,src.kind))}if(src.kind==="remoteok"){const j=await json(src.url);return j.filter(x=>x?.position).map(x=>common({title:x.position,company:x.company,description:x.description,location:x.location,url:x.url,tags:x.tags,salaryMin:x.salary_min,salaryMax:x.salary_max},src.name,src.kind))}if(src.kind==="himalayas"){let cursor="",out=[];for(let i=0;i<5;i++){const u=src.url+"?limit=20"+(cursor?"&cursor="+encodeURIComponent(cursor):"");const j=await json(u);out.push(...(j.jobs||[]));cursor=j.nextCursor||"";if(!cursor)break}return out.map(x=>common({title:x.title,companyName:x.companyName,description:x.description,location:(x.locationRestrictions||[]).join(", ")||"Remote",minSalary:x.minSalary,maxSalary:x.maxSalary,currency:x.currency,pubDate:x.pubDate,applicationLink:x.applicationLink,tags:x.parentCategories,category:x.category},src.name,src.kind))}if(src.kind==="rss"){const xml=await text(src.url);return xmlItems(xml).map(item=>common({title:xmlTag(item,"title"),description:xmlTag(item,"description"),location:xmlTag(item,"category"),company:xmlTag(item,"author")||src.name,pubDate:xmlTag(item,"pubDate"),url:xmlTag(item,"link")},src.name,src.kind))}if(src.kind==="greenhouse"){const j=await json("https://boards-api.greenhouse.io/v1/boards/"+src.board+"/jobs?content=true");return(j.jobs||[]).map(x=>common({title:x.title,description:x.content,location:x.location?.name,url:x.absolute_url,updated_at:x.updated_at},src.name,src.kind))}if(src.kind==="lever"){const j=await json("https://api.lever.co/v0/postings/"+src.site+"?mode=json");return(j||[]).map(x=>common({title:x.text,description:x.descriptionPlain||x.description,location:x.categories?.location||"Remote",url:x.hostedUrl,updated_at:x.createdAt},src.name,src.kind))}if(src.kind==="ashby"){const j=await json("https://api.ashbyhq.com/posting-api/job-board/"+src.board+"?includeCompensation=true");return(j.jobs||[]).map(x=>common({title:x.title,description:x.descriptionHtml,location:x.location,url:x.jobUrl,publishedAt:x.publishedAt,category:x.department},src.name,src.kind))}return[]}
+const envTargets=[];for(const board of(process.env.GREENHOUSE_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"greenhouse:"+board,name:"Greenhouse · "+board,kind:"greenhouse",board,url:"https://boards-api.greenhouse.io/v1/boards/"+board+"/jobs",enabled:true});for(const site of(process.env.LEVER_SITES||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"lever:"+site,name:"Lever · "+site,kind:"lever",site,url:"https://api.lever.co/v0/postings/"+site,enabled:true});for(const board of(process.env.ASHBY_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"ashby:"+board,name:"Ashby · "+board,kind:"ashby",board,url:"https://api.ashbyhq.com/posting-api/job-board/"+board,enabled:true});
+const SOURCES=[...baseSources,...envTargets],previous=JSON.parse(await fs.readFile(OUT,"utf8").catch(()=>"[ ]")),byId=new Map(previous.map(j=>[j.id,j]));let totalSeen=0;const stats=[];
+for(const src of SOURCES.filter(s=>s.enabled)){try{const list=await collect(src);totalSeen+=list.length;for(const j of list)byId.set(j.id,{...(byId.get(j.id)||{}),...j});stats.push({id:src.id,ok:true,count:list.length});console.log(src.id,list.length)}catch(e){stats.push({id:src.id,ok:false,count:0,error:e?.message||String(e)});console.error("source failed",src.id,e?.message||e)}}
+const cutoff=Date.now()-60*24*60*60*1000,jobs=[...byId.values()].filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,5000);await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
+const supabaseUrl=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(supabaseUrl&&key){const sb=createClient(supabaseUrl,key,{auth:{autoRefreshToken:false,persistSession:false}});const run=await sb.from("ingest_runs").insert({sources_total:SOURCES.length}).select("id").single();const runId=run.data?.id;await sb.from("sources").upsert(SOURCES.map(s=>({id:s.id,name:s.name,kind:s.kind,url:s.url,enabled:s.enabled!==false,attribution:s.attribution||s.name})),{onConflict:"id"});const cm=new Map();for(const j of jobs){const s=slug(j.company);if(!cm.has(s))cm.set(s,{slug:s,name:j.company,source_names:[j.sourceName],last_seen_at:new Date().toISOString()})}function slug(s){return String(s).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,90)}const {data:cs}=await sb.from("companies").upsert([...cm.values()],{onConflict:"slug"}).select("id,slug");for(const c of cs||[])cm.get(c.slug).id=c.id;const rows=jobs.map(j=>({id:j.id,fingerprint:j.fingerprint,slug:j.slug,title:j.title,company_id:cm.get(slug(j.company))?.id||null,company_name:j.company,description:j.description,location:j.location,work_mode:j.workMode,employment_type:j.type,salary_text:j.salary,salary_min:j.salaryMin||null,salary_max:j.salaryMax||null,currency:j.currency||null,skills:j.skills,category:j.category,experience:j.experience,published_at:j.publishedAt,updated_at:new Date().toISOString(),source_name:j.sourceName,source_url:j.sourceUrl,apply_url:j.applyUrl,verified:true,freshness:j.freshness,tags:j.tags,raw:j.raw||{},status:"active",last_seen_at:new Date().toISOString()}));for(let i=0;i<rows.length;i+=500)await sb.from("jobs").upsert(rows.slice(i,i+500),{onConflict:"id"});const links=jobs.map(j=>({job_id:j.id,source_id:SOURCES.find(s=>s.name===j.sourceName)?.id||j.sourceName,source_job_id:j.id,source_url:j.sourceUrl,last_seen_at:new Date().toISOString(),raw:j.raw||{}}));for(let i=0;i<links.length;i+=500)await sb.from("job_sources").upsert(links.slice(i,i+500),{onConflict:"job_id,source_id"});for(const s of stats)await sb.from("sources").update({last_success_at:s.ok?new Date().toISOString():undefined,last_error:s.ok?null:s.error,last_count:s.count,updated_at:new Date().toISOString()}).eq("id",s.id);if(runId)await sb.from("ingest_runs").update({finished_at:new Date().toISOString(),status:stats.some(s=>!s.ok)?"partial":"success",sources_succeeded:stats.filter(s=>s.ok).length,jobs_seen:totalSeen,jobs_upserted:jobs.length,metadata:{stats}}).eq("id",runId)}
+console.log("JobNews ingestion:",jobs.length,"active jobs across",SOURCES.length,"source definitions");
