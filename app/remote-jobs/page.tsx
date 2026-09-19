@@ -1,1 +1,1 @@
-export {default} from "../jobs/page";
+import {redirect} from "next/navigation";export default function RemoteJobs(){redirect("/jobs?mode=remote");}
