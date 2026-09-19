@@ -1,6 +1,6 @@
 import {createServiceSupabase} from "./supabase/service";
 import {embedText} from "./embeddings";
-import type {Job};
+import type {Job} from "./jobs";
 
 function map(r:any):Job{return{
   id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:r.description||"",location:r.location,
@@ -21,8 +21,7 @@ export async function semanticSearch(q:string):Promise<{job:Job;score:number}[]>
       const ids=data.map((x:any)=>x.job_id);
       const {data:rows}=await sb.from("jobs").select("*").in("id",ids);
       const by=new Map((rows||[]).map((r:any)=>[r.id,map(r)]));
-      return data.map((x:any)=>({job:by.get(x.job_id),score:Number(x.similarity||0)} as {job:Job;score:number}))
-        .filter((x:{job:Job;score:number})=>Boolean(x.job));
+      return data.map((x:any)=>({job:by.get(x.job_id)!,score:Number(x.similarity||0)})).filter((x:any)=>Boolean(x.job));
     }
   }
   const {data}=await sb.from("jobs").select("*").eq("status","active").textSearch("search_document",q,{type:"websearch"}).order("published_at",{ascending:false}).limit(100);
