@@ -11,7 +11,7 @@ export async function generateMetadata({params}:{params:Promise<{slug:string}>})
 }
 export default async function JobPage({params}:{params:Promise<{slug:string}>}){
   const {slug}=await params;const j=getJob(slug);if(!j)notFound();
-  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news.onrender.com";
+  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news-prod.onrender.com";
   const pageUrl=base+"/jobs/"+j!.slug;
   const schema={"@context":"https://schema.org","@type":"JobPosting","title":j!.title,"description":j!.description,"datePosted":j!.publishedAt,"hiringOrganization":{"@type":"Organization","name":j!.company},"jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":j!.location}},"url":pageUrl};
   return <main><header className="nav"><div className="container navin"><Link href="/" className="brand">Job<span>News</span></Link><Link className="chip" href="/jobs">All jobs</Link></div></header>
