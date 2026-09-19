@@ -1,0 +1,1 @@
+export default function Privacy(){return <main className="container section"><div className="card"><h1>Privacy Policy</h1><p>Analytics and advertising technologies may be enabled in production. Do not submit sensitive information unless you are intentionally following an external application flow.</p></div></main>}
