@@ -19,7 +19,7 @@ async function enrich(job){
     "COMPANY: "+job.company,
     "LOCATION: "+job.location,
     "DESCRIPTION: "+job.description.slice(0,6500)
-  ].join("\\n");
+  ].join("\n");
   const r=await fetch("https://router.huggingface.co/v1/chat/completions",{
     method:"POST",
     headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
@@ -33,7 +33,7 @@ async function enrich(job){
   if(!r.ok) throw new Error("HF "+r.status);
   const j=await r.json();
   const text=j.choices?.[0]?.message?.content||"";
-  const match=text.match(/\\{[\\s\\S]*\\}/);
+  const match=text.match(/\{[\s\S]*\}/);
   if(!match) return null;
   try{return JSON.parse(match[0]);}catch{return null;}
 }
@@ -47,5 +47,5 @@ for(const job of fresh){
     }
   }catch(e){console.error("AI failed",job.id,e?.message||e);}
 }
-await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"\\n");
+await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"\n");
 console.log("AI-enriched",fresh.length,"new records");
