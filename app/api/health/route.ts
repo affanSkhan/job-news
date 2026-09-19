@@ -1,0 +1,1 @@
+import {getActiveJobs} from "../../../lib/jobs";export async function GET(){return Response.json({ok:true,service:"job-news",activeJobs:getActiveJobs().length,time:new Date().toISOString()})}
