@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
+    paths:
+      - ".github/workflows/ingest.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/**"
+      - "data/sources.json"
       - "data/jobs.json"
   schedule:
     - cron: "30 2,14 * * *"
