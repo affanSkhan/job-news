@@ -6,14 +6,14 @@ const OUT="data/jobs.json";
 const now=new Date().toISOString();
 
 const strip=(s="")=>s
-  .replace(/<script[\\s\\S]*?<\\/script>/gi," ")
-  .replace(/<style[\\s\\S]*?<\\/style>/gi," ")
+  .replace(/<script[\s\S]*?<\/script>/gi," ")
+  .replace(/<style[\s\S]*?<\/style>/gi," ")
   .replace(/<[^>]+>/g," ")
   .replace(/&nbsp;/gi," ")
   .replace(/&amp;/gi,"&")
   .replace(/&quot;/gi,'"')
   .replace(/&#39;/gi,"'")
-  .replace(/\\s+/g," ").trim();
+  .replace(/\s+/g," ").trim();
 
 const slug=s=>s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70);
 const hash=s=>crypto.createHash("sha1").update(s).digest("hex").slice(0,10);
