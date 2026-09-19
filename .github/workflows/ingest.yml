@@ -1,6 +1,11 @@
 name: JobNews Twice-Daily Ingestion
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "data/jobs.json"
   schedule:
     - cron: "30 2,14 * * *"
 permissions:
