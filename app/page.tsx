@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {getActiveJobs} from "../lib/jobs";
+export const dynamic="force-dynamic";
+export const revalidate=0;
 export default function Home(){
  const jobs=getActiveJobs(); const today=jobs.filter(j=>j.freshness==="today"); const internships=jobs.filter(j=>j.type==="internship").length; const remote=jobs.filter(j=>j.workMode==="remote").length;
  return <><header className="nav"><div className="container navin"><Link href="/" className="brand">Job<span>News</span></Link><nav className="links"><Link href="/jobs">Jobs</Link><Link href="/jobs?type=internship">Internships</Link><Link href="/jobs?mode=remote">Remote</Link><Link href="/jobs?fresh=today">Today</Link><Link href="/about">Methodology</Link></nav><Link className="chip" href="/jobs">Explore all</Link></div></header>
