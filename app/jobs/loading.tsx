@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="container section"><div className="card"><h1>Loading current jobs…</h1><p>Fetching the latest source-backed inventory.</p></div></main>}
