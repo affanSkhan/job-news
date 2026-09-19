@@ -104,5 +104,5 @@ const cutoff=Date.now()-45*24*60*60*1000;
 let jobs=[...byKey.values()].filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff);
 jobs.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
 jobs=jobs.slice(0,2500);
-await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\\n");
+await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
 console.log("JobNews ingestion:",jobs.length,"active jobs");
