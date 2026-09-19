@@ -22,8 +22,10 @@ jobs:
         with:
           node-version: 20
       - run: npm install --no-audit --no-fund
-      - name: Ingest and AI-enrich
+      - name: Ingest
         run: npm run ingest
+      - name: AI-enrich
+        run: npm run ai:enrich
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_MODEL: Qwen/Qwen3-0.6B:fastest
