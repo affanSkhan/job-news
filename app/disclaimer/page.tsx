@@ -1,0 +1,1 @@
+export default function Disclaimer(){return <main className="container section"><div className="card"><h1>Opportunity Disclaimer</h1><p>Always verify role status, eligibility, compensation, location, deadlines and employer identity on the original application source before applying.</p></div></main>}
