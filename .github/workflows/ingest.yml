@@ -38,5 +38,5 @@ jobs:
             echo "No changes to publish."
             exit 0
           fi
-          git commit -m "chore: refresh job inventory"
+          git commit -m "chore: refresh job inventory [skip ci]"
           git push
