@@ -1,1 +1,5 @@
-import type {MetadataRoute} from "next";export default function robots():MetadataRoute.Robots{return {rules:{userAgent:"*",allow:"/"},sitemap:(process.env.NEXT_PUBLIC_SITE_URL||"https://job-news.vercel.app")+"/sitemap.xml"}}
+import type {MetadataRoute} from "next";
+export default function robots():MetadataRoute.Robots{
+  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news.onrender.com";
+  return {rules:{userAgent:"*",allow:"/"},sitemap:base+"/sitemap.xml"};
+}
