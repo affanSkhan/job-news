@@ -6,7 +6,6 @@ import {createBrowserSupabase} from "../../lib/supabase/client";
 
 export default function AuthPage(){
   const router=useRouter();
-  const supabase=createBrowserSupabase();
   const [mode,setMode]=useState<"in"|"up">("in");
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
@@ -16,6 +15,7 @@ export default function AuthPage(){
   async function submit(e:React.FormEvent){
     e.preventDefault();
     setMsg("");
+    const supabase=createBrowserSupabase();
     const next=typeof window!=="undefined"
       ? (new URLSearchParams(window.location.search).get("next")||"/account")
       : "/account";
