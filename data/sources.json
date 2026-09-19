@@ -1,0 +1,5 @@
+[
+  {"id":"remotive","name":"Remotive","kind":"remotive","url":"https://remotive.com/api/remote-jobs","enabled":true},
+  {"id":"arbeitnow","name":"Arbeitnow","kind":"arbeitnow","url":"https://www.arbeitnow.com/api/job-board-api","enabled":true},
+  {"id":"jobicy","name":"Jobicy","kind":"jobicy","url":"https://jobicy.com/api/v2/remote-jobs","enabled":true}
+]
