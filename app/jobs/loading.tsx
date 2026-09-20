@@ -1,1 +1,1 @@
-export default function Loading(){return <main className="container section"><div className="card"><h1>Loading current jobs…</h1><p>Fetching the latest source-backed inventory.</p></div></main>}
+export default function Loading(){return <main className="loader-screen"><div className="fun-loader"><div className="loader-orbit"><i className="loader-scan"/></div><h2>Hunting fresh opportunities…</h2><p>Filtering direct employer roles and building your results.</p></div></main>}
