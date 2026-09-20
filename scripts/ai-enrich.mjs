@@ -105,6 +105,5 @@ if(db){
     await db.query("UPDATE public.jobs AS j SET ai_summary=x.summary,ai_highlights=COALESCE((SELECT array_agg(v) FROM jsonb_array_elements_text(x.highlights) AS v),ARRAY[]::text[]),updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,summary text,highlights jsonb) WHERE j.id=x.id",[JSON.stringify(chunk)]);
   }
 }
-await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"
-");
+await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"\n");
 console.log("AI-enriched",enriched,"jobs; local-model",localUsed,"fallback",fallbackUsed,"batch",batchSize,"rewrite",rewrite);
