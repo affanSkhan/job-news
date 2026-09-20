@@ -5,7 +5,7 @@ const db=process.env.DATABASE_URL?neon(process.env.DATABASE_URL):null;
 const jobs=JSON.parse(await fs.readFile("data/jobs.json","utf8"));
 const batchSize=Number(process.env.AI_BATCH||200);
 const rewrite=process.env.AI_REWRITE==="1";
-const targets=jobs.filter(j=>!j.aiSummary||rewriteWeak(j)).sort((a,b)=>Number(!a.aiSummary)-Number(!b.aiSummary)).slice(0,batchSize);
+const targets=jobs.filter(j=>!j.aiSummary||weakSummary(j)).sort((a,b)=>Number(!a.aiSummary)-Number(!b.aiSummary)).slice(0,batchSize);
 const hf=process.env.HF_TOKEN;
 const openai=process.env.OPENAI_API_KEY;
 const hfModel=process.env.HF_MODEL||"Qwen/Qwen3-0.6B:fastest";
