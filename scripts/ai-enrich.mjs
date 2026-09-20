@@ -34,7 +34,8 @@ function validResult(x,job){
   const source=[job.title,job.company,job.location,job.description,Array.isArray(job.skills)?job.skills.join(" "):""].join(" ");
   const overlap=overlapScore(summary,source);
   const repetition=repetitionScore(summary);
-  if(summary.length<60||summary.length>420||overlap<0.28||repetition<0.62)return null;
+  const lower=summary.toLowerCase();
+  if(summary.length<80||summary.length>360||overlap<0.55||repetition<0.72||lower.includes("mention the word")||lower.includes("tag ")||lower.includes("follow us")||lower.includes("subscribe"))return null;
   const highlights=Array.isArray(x&&x.highlights)?x.highlights.map(v=>String(v).trim()).filter(Boolean).slice(0,4):[];
   return {summary,highlights};
 }
