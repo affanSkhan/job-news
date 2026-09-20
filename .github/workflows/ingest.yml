@@ -39,7 +39,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
           AI_BATCH: 1000
-          LOCAL_AI_MODEL: Xenova/flan-t5-small
+          AI_REWRITE: "1"
+          LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
       - name: Local semantic embeddings
         run: npm run jobs:embed
         env:
