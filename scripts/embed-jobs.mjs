@@ -7,7 +7,10 @@ const model=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";
 const batchSize=Math.max(50,Number(process.env.EMBED_BATCH||300));
 const dim=1536;
 const extractor=await pipeline("feature-extraction",model);
-const rows=await db.query("SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE embedding IS NULL AND status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1",[batchSize]);
+const forceAll=process.env.EMBED_FORCE_ALL==="1";
+const rows=await db.query(forceAll
+  ?"SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1"
+  :"SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE embedding IS NULL AND status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1",[batchSize]);
 let embedded=0;
 for(let start=0;start<rows.length;start+=80){
   const batch=rows.slice(start,start+80);
@@ -25,4 +28,4 @@ for(let start=0;start<rows.length;start+=80){
     await db.query("UPDATE public.jobs AS j SET embedding=x.embedding::vector,updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,embedding text) WHERE j.id=x.id",[JSON.stringify(updates)]);
   }catch(e){console.error("embedding batch failed",e?.message||String(e))}
 }
-console.log("Embedded",embedded,"of",rows.length,"jobs using",model);
+console.log("Embedded",embedded,"of",rows.length,"jobs using",model,"force-all",forceAll);
