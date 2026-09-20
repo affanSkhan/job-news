@@ -34,3 +34,12 @@ export async function POST(req:Request){
     return NextResponse.json({error:error instanceof Error?error.message:"Could not process this resume."},{status:422});
   }
 }
+
+export async function DELETE(){
+  const user=await getCurrentUser();
+  if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});
+  const sql=getDb();
+  if(!sql)return NextResponse.json({error:"Database not configured"},{status:503});
+  await sql.query("UPDATE public.profiles SET resume_text=NULL,resume_filename=NULL,resume_skills='{}',resume_roles='{}',resume_profile='{}'::jsonb,resume_uploaded_at=NULL,embedding=NULL,updated_at=now() WHERE id=$1",[user.id]);
+  return NextResponse.json({ok:true});
+}
