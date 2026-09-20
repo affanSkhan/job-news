@@ -98,7 +98,13 @@ for(const job of targets){
   job.aiSummary=x.summary;
   job.aiHighlights=x.highlights||[];
   enriched++;
-  if(db)await db.query("UPDATE public.jobs SET ai_summary=$1,ai_highlights=$2,updated_at=now() WHERE id=$3",[job.aiSummary,job.aiHighlights,job.id]);
 }
-await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"\n");
+if(db){
+  for(let i=0;i<targets.length;i+=250){
+    const chunk=targets.slice(i,i+250).map(j=>({id:j.id,summary:j.aiSummary,highlights:j.aiHighlights||[]}));
+    await db.query("UPDATE public.jobs AS j SET ai_summary=x.summary,ai_highlights=COALESCE((SELECT array_agg(v) FROM jsonb_array_elements_text(x.highlights) AS v),ARRAY[]::text[]),updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,summary text,highlights jsonb) WHERE j.id=x.id",[JSON.stringify(chunk)]);
+  }
+}
+await fs.writeFile("data/jobs.json",JSON.stringify(jobs,null,2)+"
+");
 console.log("AI-enriched",enriched,"jobs; local-model",localUsed,"fallback",fallbackUsed,"batch",batchSize,"rewrite",rewrite);
