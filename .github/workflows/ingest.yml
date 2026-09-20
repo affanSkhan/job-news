@@ -41,7 +41,7 @@ jobs:
           AI_BATCH: 5000
           AI_REWRITE: "1"
           LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
-          LOCAL_AI_MAX: 120
+          LOCAL_AI_MAX: 20
       - name: Local semantic embeddings
         run: npm run jobs:embed
         env:
