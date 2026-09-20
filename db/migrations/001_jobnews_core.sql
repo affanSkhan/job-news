@@ -1,0 +1,66 @@
+-- JobNews Neon schema. Neon Auth owns users/sessions in neon_auth; application data lives in public.
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS public.sources (
+  id text PRIMARY KEY,name text NOT NULL,kind text NOT NULL,url text NOT NULL,enabled boolean NOT NULL DEFAULT true,
+  attribution text,last_success_at timestamptz,last_error text,last_count integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.companies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),slug text UNIQUE NOT NULL,name text NOT NULL,website text,logo_url text,
+  description text,total_open_roles integer NOT NULL DEFAULT 0,source_names text[] NOT NULL DEFAULT '{}',last_seen_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.jobs (
+  id text PRIMARY KEY,fingerprint text UNIQUE NOT NULL,slug text UNIQUE NOT NULL,title text NOT NULL,
+  company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL,company_name text NOT NULL,description text NOT NULL DEFAULT '',
+  location text NOT NULL DEFAULT 'Location not specified',work_mode text NOT NULL DEFAULT 'unknown',
+  employment_type text NOT NULL DEFAULT 'other',salary_text text NOT NULL DEFAULT 'Not disclosed',salary_min numeric,salary_max numeric,currency text,
+  skills text[] NOT NULL DEFAULT '{}',category text NOT NULL DEFAULT 'Other',experience text NOT NULL DEFAULT 'Not specified',
+  published_at timestamptz,updated_at timestamptz NOT NULL DEFAULT now(),source_name text NOT NULL,source_url text,apply_url text,
+  verified boolean NOT NULL DEFAULT false,freshness text NOT NULL DEFAULT 'older',tags text[] NOT NULL DEFAULT '{}',ai_summary text,
+  ai_highlights text[] NOT NULL DEFAULT '{}',embedding vector(1536),status text NOT NULL DEFAULT 'active',
+  first_seen_at timestamptz NOT NULL DEFAULT now(),last_seen_at timestamptz NOT NULL DEFAULT now(),raw jsonb NOT NULL DEFAULT '{}'::jsonb,
+  search_document tsvector
+);
+CREATE INDEX IF NOT EXISTS jobs_status_published_idx ON public.jobs(status,published_at DESC);
+CREATE INDEX IF NOT EXISTS jobs_company_idx ON public.jobs(company_id);
+CREATE INDEX IF NOT EXISTS jobs_search_idx ON public.jobs USING gin(search_document);
+CREATE INDEX IF NOT EXISTS jobs_embedding_idx ON public.jobs USING hnsw(embedding vector_cosine_ops);
+
+CREATE TABLE IF NOT EXISTS public.job_sources (
+  job_id text NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,source_id text NOT NULL REFERENCES public.sources(id) ON DELETE CASCADE,
+  source_job_id text,source_url text,first_seen_at timestamptz NOT NULL DEFAULT now(),last_seen_at timestamptz NOT NULL DEFAULT now(),
+  raw jsonb NOT NULL DEFAULT '{}'::jsonb,PRIMARY KEY(job_id,source_id)
+);
+CREATE TABLE IF NOT EXISTS public.ingest_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),started_at timestamptz NOT NULL DEFAULT now(),finished_at timestamptz,
+  status text NOT NULL DEFAULT 'running',sources_total integer NOT NULL DEFAULT 0,sources_succeeded integer NOT NULL DEFAULT 0,
+  jobs_seen integer NOT NULL DEFAULT 0,jobs_upserted integer NOT NULL DEFAULT 0,jobs_failed integer NOT NULL DEFAULT 0,error text,metadata jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY REFERENCES neon_auth."user"(id) ON DELETE CASCADE,email text,full_name text,headline text,
+  desired_titles text[] NOT NULL DEFAULT '{}',skills text[] NOT NULL DEFAULT '{}',preferred_locations text[] NOT NULL DEFAULT '{}',
+  preferred_work_modes text[] NOT NULL DEFAULT '{}',min_salary numeric,salary_currency text,experience_level text,profile_text text,
+  embedding vector(1536),role text NOT NULL DEFAULT 'user',created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.saved_jobs (
+  user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,job_id text NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
+  notes text,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(user_id,job_id)
+);
+CREATE TABLE IF NOT EXISTS public.applications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
+  job_id text NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,status text NOT NULL DEFAULT 'saved',applied_at timestamptz,notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),UNIQUE(user_id,job_id)
+);
+CREATE TABLE IF NOT EXISTS public.job_alerts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,name text NOT NULL,
+  criteria jsonb NOT NULL DEFAULT '{}'::jsonb,frequency text NOT NULL DEFAULT 'daily',active boolean NOT NULL DEFAULT true,last_sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.analytics_events (
+  id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,user_id uuid REFERENCES neon_auth."user"(id) ON DELETE SET NULL,
+  event_name text NOT NULL,path text,job_id text REFERENCES public.jobs(id) ON DELETE SET NULL,metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
