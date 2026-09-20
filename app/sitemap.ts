@@ -1,5 +1,8 @@
 import type {MetadataRoute} from "next";
-import {getActiveJobsAsync,slugify,companySlug} from "../lib/jobs";\n\nexport const dynamic="force-dynamic";\nexport const revalidate=3600;
+import {getActiveJobsAsync,slugify,companySlug} from "../lib/jobs";
+
+export const dynamic="force-dynamic";
+export const revalidate=3600;
 
 function safeDate(value:string|undefined){
   const date=new Date(value||"");
@@ -9,12 +12,16 @@ function safeDate(value:string|undefined){
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news-prod.onrender.com";
   const jobs=await getActiveJobsAsync();
-  const companies=new Set<string>(),skills=new Set<string>(),locations=new Set<string>();
+  const companies=new Set<string>();
+  const skills=new Set<string>();
+  const locations=new Set<string>();
+
   for(const j of jobs){
     if(j.company)companies.add(companySlug(j.company));
     for(const s of j.skills)skills.add(slugify(s));
     if(j.location)locations.add(slugify(j.location));
   }
+
   return [
     {url:base,lastModified:new Date(),priority:1},
     {url:base+"/jobs",lastModified:new Date(),priority:.95},
