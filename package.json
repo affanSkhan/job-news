@@ -1,7 +1,7 @@
 {
-  "name":"job-news","version":"2.0.0","private":true,
+  "name":"job-news","version":"2.1.0","private":true,
   "scripts":{"dev":"next dev","build":"next build","start":"next start","lint":"next lint","ingest":"node scripts/ingest.mjs","ai:enrich":"node scripts/ai-enrich.mjs","jobs:embed":"node scripts/embed-jobs.mjs","alerts":"node scripts/alerts.mjs"},
-  "dependencies":{"@supabase/ssr":"^0.7.0","@supabase/supabase-js":"^2.57.0","next":"^16.3.0","react":"^19.1.0","react-dom":"^19.1.0","lucide-react":"^0.468.0"},
+  "dependencies":{"@neondatabase/auth":"^0.5.0-beta","@neondatabase/auth-ui":"^0.3.0-beta","@neondatabase/serverless":"^1.1.0","next":"^16.3.0","react":"^19.1.0","react-dom":"^19.1.0","lucide-react":"^0.468.0"},
   "devDependencies":{"@types/node":"^22.0.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","typescript":"^5.7.0"},
   "engines":{"node":">=20.9.0 <21"}
 }
