@@ -5,11 +5,39 @@ const out="data/web-discovered-jobs.json";
 const model=process.env.WEB_DISCOVERY_MODEL||"gpt-5.6";
 if(!key){console.log("Web discovery skipped: OPENAI_API_KEY missing.");await fs.writeFile(out,"[]\n");process.exit(0)}
 const queries=[
-  "new software engineer intern India last 48 hours direct employer greenhouse ashby lever workday",
-  "new AI ML data internships India remote Pune Bengaluru Hyderabad last 48 hours direct company careers",
-  "new graduate backend frontend full stack software jobs India last 48 hours direct employer",
-  "remote software engineering internships worldwide last 48 hours direct employer ATS",
-  "less visible software engineering internships startups direct employer ATS last 48 hours"
+  "INDIA Pune software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Pune AI ML data science jobs internships last 48 hours direct employer careers ATS",
+  "INDIA Pune frontend backend full stack Node React Python Java jobs last 48 hours direct employer careers ATS",
+  "INDIA Bengaluru Bangalore software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Bengaluru Bangalore AI ML data engineering cloud cybersecurity jobs last 48 hours direct employer careers ATS",
+  "INDIA Bengaluru Bangalore frontend backend full stack mobile Flutter Android jobs last 48 hours direct employer careers ATS",
+  "INDIA Hyderabad software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Hyderabad AI ML data cloud cybersecurity jobs last 48 hours direct employer careers ATS",
+  "INDIA Hyderabad frontend backend full stack software jobs last 48 hours direct employer careers ATS",
+  "INDIA Delhi NCR Gurgaon Gurugram Noida software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Delhi NCR Gurgaon Gurugram Noida AI ML data engineering cloud cybersecurity jobs last 48 hours direct employer careers ATS",
+  "INDIA Delhi NCR Gurgaon Gurugram Noida frontend backend full stack mobile jobs last 48 hours direct employer careers ATS",
+  "INDIA Mumbai software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Mumbai AI ML data engineering product technology jobs last 48 hours direct employer careers ATS",
+  "INDIA Chennai software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Ahmedabad software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Kolkata software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Jaipur software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Kochi software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA Indore Nagpur software engineer jobs internships fresher 0-3 years last 48 hours direct employer careers ATS",
+  "INDIA remote software engineer jobs internships India fresher graduate last 48 hours direct employer careers ATS",
+  "INDIA remote AI ML data science internships jobs India last 48 hours direct employer careers ATS",
+  "INDIA software engineering internships 2026 2027 students BTech BE direct employer ATS last 48 hours",
+  "INDIA fresher graduate software developer jobs 0-1 years direct employer ATS last 48 hours",
+  "INDIA new grad backend frontend full stack mobile jobs direct employer ATS last 48 hours",
+  "INDIA startup software engineering jobs internships direct employer careers less visible last 48 hours",
+  "INDIA data analyst data engineer business analyst jobs fresher direct employer ATS last 48 hours",
+  "INDIA DevOps cloud platform SRE cybersecurity jobs fresher junior direct employer ATS last 48 hours",
+  "INDIA product design UX UI technology jobs internships direct employer ATS last 48 hours",
+  "GLOBAL remote software engineering internships worldwide last 48 hours direct employer ATS",
+  "GLOBAL remote AI ML data internships worldwide last 48 hours direct employer ATS",
+  "GLOBAL less visible software engineering startup jobs direct employer ATS last 48 hours",
+  "GLOBAL new graduate software engineer jobs direct employer ATS last 48 hours"
 ];
 function clean(v){return String(v||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()}
 function slug(v){return String(v||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,90)}
@@ -32,10 +60,10 @@ for(const query of queries){
       if(!checked.ok||!employerLike(checked.finalUrl,x.company))continue;
       const title=clean(x.title),company=clean(x.company),location=clean(x.location||"Location not specified");
       const id=idFor(title,company,location);
-      found.push({id:id,fingerprint:id,slug:slug(title+"-"+company)+"-"+id,title:title,company:company,description:clean(x.summary||checked.text.slice(0,500))||"Discovered through live employer web search.",location:location,workMode:String(x.workMode||"unknown"),type:String(x.type||(/intern/i.test(title)?"internship":"full-time")),salary:"Not disclosed",skills:[],category:"Other",experience:"Not specified",publishedAt:x.publishedAt||new Date().toISOString(),updatedAt:new Date().toISOString(),sourceName:"AI Web Discovery",sourceKind:"ai_web_discovery",sourceUrl:checked.finalUrl,applyUrl:checked.finalUrl,verified:true,freshness:"today",tags:["ai-discovered"],raw:{query:query,url:checked.finalUrl}});
+      found.push({id:id,fingerprint:id,slug:slug(title+"-"+company)+"-"+id,title:title,company:company,description:clean(x.summary||checked.text.slice(0,500))||"Discovered through live employer web search.",location:location,workMode:String(x.workMode||"unknown"),type:String(x.type||(/intern/i.test(title)?"internship":"full-time")),salary:"Not disclosed",skills:[],category:"Other",experience:"Not specified",publishedAt:x.publishedAt||new Date().toISOString(),updatedAt:new Date().toISOString(),sourceName:/^INDIA\s/i.test(query)?"AI Web Discovery · India":"AI Web Discovery",sourceKind:"ai_web_discovery",sourceUrl:checked.finalUrl,applyUrl:checked.finalUrl,verified:true,freshness:"today",tags:["ai-discovered"],raw:{query:query,url:checked.finalUrl}});
     }
   }catch(e){console.error("web discovery query failed",e&&e.message||String(e))}
 }
 const dedup=new Map(found.map(function(j){return [j.id,j]}));
-await fs.writeFile(out,JSON.stringify(Array.from(dedup.values()).slice(0,40),null,2)+"\n");
+const india=Array.from(dedup.values()).filter(function(j){return /india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i.test(String(j.location||""))});\nconst global=Array.from(dedup.values()).filter(function(j){return !india.includes(j)});\nawait fs.writeFile(out,JSON.stringify(india.slice(0,90).concat(global.slice(0,30)),null,2)+"\n");
 console.log("AI web discovery found "+dedup.size+" validated employer/ATS opportunities.");
