@@ -38,7 +38,7 @@ jobs:
           HF_MODEL: Qwen/Qwen3-0.6B:fastest
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
-          AI_BATCH: 1000
+          AI_BATCH: 5000
           AI_REWRITE: "1"
           LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
           LOCAL_AI_MAX: 120
@@ -48,7 +48,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_EMBEDDING_MODEL: text-embedding-3-small
-          EMBED_BATCH: 1300
+          EMBED_BATCH: 5000
           LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
       - name: User alerts
         run: npm run alerts
