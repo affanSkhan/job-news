@@ -10,7 +10,7 @@ permissions: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - name: Check Render homepage
         run: |
@@ -20,8 +20,63 @@ jobs:
           grep -q "Your job search has a radar now" /tmp/home.html
           grep -q "JobNews" /tmp/home.html
           wc -c /tmp/home.html
+
       - name: Check Render health
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/api/health" > /tmp/health.json
           cat /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          grep -q '"databaseReachable":true' /tmp/health.json
+
+      - name: Check deployed PDF parser
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/api/health?check=resume" > /tmp/resume-health.json
+          cat /tmp/resume-health.json
+          grep -q '"resumeParser":{"ok":true' /tmp/resume-health.json
+
+      - name: Check anonymous PDF resume upload
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          objects = [
+              b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
+              b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n",
+              b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n",
+              b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
+          ]
+          stream = (
+              b"BT /F1 12 Tf 72 720 Td "
+              b"(JobNews Production Resume Smoke Test) Tj 0 -24 Td "
+              b"(Python TypeScript React Next.js FastAPI PostgreSQL Machine Learning) Tj 0 -24 Td "
+              b"(Software Engineer Intern anonymous upload validation for the production parser.) Tj ET\n"
+          )
+          objects.append(
+              f"5 0 obj << /Length {len(stream)} >> stream\n".encode() +
+              stream +
+              b"endstream endobj\n"
+          )
+
+          body = b"%PDF-1.4\n"
+          offsets = [0]
+          for obj in objects:
+              offsets.append(len(body))
+              body += obj
+          xref = len(body)
+          body += f"xref\n0 {len(objects)+1}\n0000000000 65535 f \n".encode()
+          for offset in offsets[1:]:
+              body += f"{offset:010d} 00000 n \n".encode()
+          body += f"trailer << /Size {len(objects)+1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+          Path("/tmp/resume-smoke.pdf").write_bytes(body)
+          PY
+
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 60             -F "resume=@/tmp/resume-smoke.pdf;type=application/pdf"             "https://job-news-prod.onrender.com/api/resume" > /tmp/resume.json
+
+          cat /tmp/resume.json
+          grep -q '"ok":true' /tmp/resume.json
+          grep -q '"filename":"resume-smoke.pdf"' /tmp/resume.json
+          grep -q '"skills":' /tmp/resume.json
+          grep -q '"items":' /tmp/resume.json
