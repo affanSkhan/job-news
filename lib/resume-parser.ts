@@ -1,5 +1,11 @@
+import {getData} from "pdf-parse/worker";
 import {PDFParse} from "pdf-parse";
 import mammoth from "mammoth";
+
+// pdf-parse v2 uses a PDF.js worker. In Next.js server bundles, automatic
+// worker discovery can resolve to a .next/server/chunks path that does not
+// contain the worker. Supplying the package's bundled worker data avoids that.
+PDFParse.setWorker(getData());
 
 const SKILLS=["python","java","javascript","typescript","c++","c#","go","rust","kotlin","swift","dart","sql","react","next.js","nextjs","vue","angular","svelte","html","css","tailwind","node.js","nodejs","express","fastapi","django","flask","spring","spring boot","graphql","rest api","websockets","postgresql","mysql","mongodb","redis","sqlite","firebase","supabase","neon","docker","kubernetes","terraform","aws","azure","gcp","linux","git","github","gitlab","ci/cd","github actions","vercel","netlify","render","railway","machine learning","deep learning","tensorflow","pytorch","scikit-learn","pandas","numpy","nlp","natural language processing","computer vision","reinforcement learning","llm","llms","langchain","langgraph","rag","retrieval augmented generation","vector database","chromadb","faiss","openai","gemini","hugging face","transformers","crewai","agentic ai","generative ai","flutter","android","android studio","firebase","react native","kafka","rabbitmq","celery","rest","oauth","jwt"];
 
