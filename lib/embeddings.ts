@@ -1,4 +1,4 @@
-const DIM=1536;
+const DB_DIM=1536;
 const LOCAL_MODEL=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";
 let extractorPromise:Promise<any>|null=null;
 
