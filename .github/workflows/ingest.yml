@@ -50,7 +50,6 @@ jobs:
           OPENAI_EMBEDDING_MODEL: text-embedding-3-small
           EMBED_BATCH: 5000
           LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
-          EMBED_FORCE_ALL: "1"
       - name: User alerts
         run: npm run alerts
         env:
