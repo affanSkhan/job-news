@@ -15,7 +15,23 @@ async function collect(src){if(src.kind==="remotive"){const j=await json(src.url
 async function upsertJson(table,columns,types,rows,updates){if(!db||!rows.length)return;const recordDef=columns.map((c,i)=>c+" "+types[i]).join(",");const selectCols=columns.join(",");const updateSql=updates.map(c=>c+"=EXCLUDED."+c).join(",");const sql="INSERT INTO public."+table+" ("+selectCols+") SELECT "+selectCols+" FROM jsonb_to_recordset($1::jsonb) AS x("+recordDef+") ON CONFLICT DO NOTHING";await db.query(sql,[JSON.stringify(rows)]);if(updates.length&&updates[0]){const json=JSON.stringify(rows);const conflictSql="INSERT INTO public."+table+" ("+selectCols+") SELECT "+selectCols+" FROM jsonb_to_recordset($1::jsonb) AS x("+recordDef+") ON CONFLICT ("+(table==="companies"?"slug":table==="sources"?"id":"id")+") DO UPDATE SET "+updateSql;await db.query(conflictSql,[json])}}
 const envTargets=[];for(const board of(process.env.GREENHOUSE_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"greenhouse:"+board,name:"Greenhouse · "+board,kind:"greenhouse",board,url:"https://boards-api.greenhouse.io/v1/boards/"+board+"/jobs",enabled:true});for(const site of(process.env.LEVER_SITES||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"lever:"+site,name:"Lever · "+site,kind:"lever",site,url:"https://api.lever.co/v0/postings/"+site,enabled:true});for(const board of(process.env.ASHBY_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"ashby:"+board,name:"Ashby · "+board,kind:"ashby",board,url:"https://api.ashbyhq.com/posting-api/job-board/"+board,enabled:true});
 const SOURCES=[...baseSources,...atsSources,...envTargets],previous=JSON.parse(await fs.readFile(OUT,"utf8").catch(()=>"[ ]")),byId=new Map(previous.map(j=>[j.id,j]));let totalSeen=0;const stats=[];
-for(const src of SOURCES.filter(s=>s.enabled)){try{const all=await collect(src);const maxJobs=Number(src.maxJobs||0);const list=maxJobs>0?all.slice(0,maxJobs):all;totalSeen+=list.length;for(const j of list)byId.set(j.id,{...(byId.get(j.id)||{}),...j});stats.push({id:src.id,ok:true,count:list.length});console.log(src.id,list.length)}catch(e){stats.push({id:src.id,ok:false,count:0,error:e?.message||String(e)});console.error("source failed",src.id,e?.message||String(e))}}
+const sourceResults=await Promise.all(SOURCES.filter(s=>s.enabled).map(async src=>{
+  try{
+    const all=await collect(src),maxJobs=Number(src.maxJobs||0),list=maxJobs>0?all.slice(0,maxJobs):all;
+    console.log(src.id,list.length);
+    return {src,list,ok:true,count:list.length};
+  }catch(e){
+    const error=e?.message||String(e);
+    console.error("source failed",src.id,error);
+    return {src,list:[],ok:false,count:0,error};
+  }
+}));
+for(const result of sourceResults){
+  const {src,list,ok,count,error}=result;
+  totalSeen+=count;
+  for(const j of list)byId.set(j.id,{...(byId.get(j.id)||{}),...j});
+  stats.push({id:src.id,ok,count,error});
+}
 function ensureFingerprint(j){const title=String(j?.title||"Opportunity"),company=String(j?.company||"Unknown company"),location=String(j?.location||"Remote"),fingerprint=String(j?.fingerprint||"").trim()||hash([title.toLowerCase(),company.toLowerCase(),location.toLowerCase()].join("|"));return{...j,id:String(j?.id||fingerprint),fingerprint,slug:String(j?.slug||(`${slug(title+"-"+company)}-${fingerprint}`))}}
 const normalized=[...byId.values()].map(ensureFingerprint),uniqueByFingerprint=new Map(normalized.map(j=>[j.fingerprint,j])),cutoff=Date.now()-60*24*60*60*1000,jobs=[...uniqueByFingerprint.values()].filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,5000);await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
 let runId=null;
