@@ -1,4 +1,24 @@
-import {auth} from "./auth/server";import {getDb} from "./db";
+import {auth} from "./auth/server";
+import {getDb} from "./db";
+
 export type CurrentUser={id:string;email?:string|null;name?:string|null};
-export async function getCurrentUser():Promise<CurrentUser|null>{try{const r:any=await auth.getSession();return r?.user||r?.data?.user||null}catch{return null}}
-export async function ensureProfile(user:CurrentUser){const sql=getDb();if(!sql)return null;await sql.query("INSERT INTO public.profiles(id,email,full_name) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING",[user.id,user.email||null,user.name||""]);const rows=await sql.query("SELECT * FROM public.profiles WHERE id=$1 LIMIT 1",[user.id]);return rows[0]||null}
+
+export async function getCurrentUser():Promise<CurrentUser|null>{
+  try{
+    const result:any=await auth.getSession();
+    return result?.data?.session?.user||result?.session?.user||result?.user||null;
+  }catch{
+    return null;
+  }
+}
+
+export async function ensureProfile(user:CurrentUser){
+  const sql=getDb();
+  if(!sql)return null;
+  await sql.query(
+    "INSERT INTO public.profiles(id,email,full_name) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING",
+    [user.id,user.email||null,user.name||""]
+  );
+  const rows=await sql.query("SELECT * FROM public.profiles WHERE id=$1 LIMIT 1",[user.id]);
+  return rows[0]||null;
+}
