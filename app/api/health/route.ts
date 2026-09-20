@@ -1,6 +1,5 @@
 import {NextResponse} from "next/server";
 import {getDb} from "../../../lib/db";
-import {parseResume} from "../../../lib/resume-parser";
 
 function smokePdf(){
   const objects=[
@@ -47,6 +46,7 @@ export async function GET(req:Request){
   const result:any={ok:true,service:"job-news",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
   if(new URL(req.url).searchParams.get("check")==="resume"){
     try{
+      const {parseResume}=await import("../../../lib/resume-parser");
       const parsed=await parseResume(smokePdf(),"application/pdf");
       result.resumeParser={ok:true,textLength:parsed.text.length,skills:parsed.skills,roles:parsed.roles};
     }catch(error){
