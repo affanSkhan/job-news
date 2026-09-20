@@ -10,7 +10,7 @@ function dateOrNow(v){
   try{
     if(v===undefined||v===null||String(v).trim()==="")return now;
     const raw=String(v).trim();
-    const numeric=/^-?\\d+(?:\\.\\d+)?$/.test(raw)?Number(raw):null;
+    const numeric=/^-?\d+(?:\.\d+)?$/.test(raw)?Number(raw):null;
     let d;
     if(numeric!==null){
       const n=Math.abs(numeric);
