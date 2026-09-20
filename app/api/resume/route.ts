@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {getCurrentUser,ensureProfile} from "../../../lib/current-user";
 import {getDb} from "../../../lib/db";
-import {parseResume} from "../../../lib/resume-parser";
+import {parseResume} from "../../../lib/resume-parser";import {isDirectApplication,applicationDestination} from "../../../lib/application";
 
 export const runtime="nodejs";
 export const maxDuration=30;
@@ -29,8 +29,8 @@ function scoreJob(job:any,skills:string[],roles:string[]){
   const published=Date.parse(job.published_at||job.updated_at||"");
   const age=Number.isFinite(published)?Math.max(0,(Date.now()-published)/86400000):30;
   const freshness=age<=2?1:age<=7?.75:age<=30?.45:.2;
-  const app=applicationType(String(job.apply_url||""),String(job.company_name||""));
-  const direct=app==="employer_site"||app==="employer_ats";
+  const direct=isDirectApplication(String(job.apply_url||""),String(job.company_name||""));
+  const app=direct?"employer":applicationDestination(String(job.apply_url||""),String(job.company_name||""));
   const score=.45*skill+.25*role+.1*freshness+.2*(direct?1:0);
   const reason=matched.length
     ? "Matches your "+matched.slice(0,4).join(", ")+" skills."+(roleHits?" The role title also aligns with your target roles.":"")
@@ -91,7 +91,7 @@ export async function POST(req:Request){
 
     const items=rows
       .map((job:any)=>scoreJob(job,parsed.skills,parsed.roles))
-      .filter((job:any)=>job.score>0)
+      .filter((job:any)=>job.direct_application && job.score>0)
       .sort((a:any,b:any)=>b.score-a.score)
       .slice(0,24);
 
