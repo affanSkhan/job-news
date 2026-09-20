@@ -2,10 +2,12 @@ import {NextResponse} from "next/server";
 import {getCurrentUser,ensureProfile} from "../../../lib/current-user";
 import {getDb} from "../../../lib/db";
 import {parseResume} from "../../../lib/resume-parser";
-import {isDirectApplication,applicationDestination} from "../../../lib/application";
+import {isDirectApplication,applicationDestination} from "../../../lib/application";import {canonicalApplicationUrl} from "../../../lib/jobs";
 
 export const runtime="nodejs";
 export const maxDuration=30;
+
+function dedupeResumeRows(rows:any[]){const map=new Map<string,any>();for(const row of rows){const key=canonicalApplicationUrl(String(row.apply_url||""))||("fallback:"+String(row.title||"")+"|"+String(row.company_name||"")+"|"+String(row.location||"")).toLowerCase();const prev=map.get(key);if(!prev){map.set(key,row);continue}const prevUnknown=/^unknown company$/i.test(String(prev.company_name||""));const rowKnown=!/^unknown company$/i.test(String(row.company_name||""));if(rowKnown&&!prevUnknown)map.set(key,row)}return [...map.values()]}
 
 function scoreJob(job:any,skills:string[],roles:string[]){
   const jobSkills=Array.isArray(job.skills)?job.skills.map((x:any)=>String(x).toLowerCase()):[];
@@ -76,10 +78,10 @@ export async function POST(req:Request){
        FROM public.jobs j
        WHERE j.status='active' AND coalesce(j.published_at,j.updated_at)>=now()-interval '90 days'
        ORDER BY coalesce(j.published_at,j.updated_at) DESC NULLS LAST
-       LIMIT 500`
+       LIMIT 1500`
     );
 
-    const items=rows
+    const items=dedupeResumeRows(rows)
       .map((job:any)=>scoreJob(job,parsed.skills,parsed.roles))
       .filter((job:any)=>job.direct_application && job.score>0)
       .sort((a:any,b:any)=>b.score-a.score)
