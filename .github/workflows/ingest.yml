@@ -8,10 +8,13 @@ on:
     - cron: "30 3,15 * * *"
 permissions:
   contents: write
+concurrency:
+  group: jobnews-intelligence
+  cancel-in-progress: true
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 1}
@@ -35,7 +38,7 @@ jobs:
           HF_MODEL: Qwen/Qwen3-0.6B:fastest
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
-          AI_BATCH: 200
+          AI_BATCH: 1000
           LOCAL_AI_MODEL: Xenova/flan-t5-small
       - name: Local semantic embeddings
         run: npm run jobs:embed
@@ -43,7 +46,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_EMBEDDING_MODEL: text-embedding-3-small
-          EMBED_BATCH: 300
+          EMBED_BATCH: 1300
           LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
       - name: User alerts
         run: npm run alerts
