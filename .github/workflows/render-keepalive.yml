@@ -82,3 +82,8 @@ jobs:
           grep -q '"filename":"resume-smoke.pdf"' /tmp/resume.json
           grep -q '"skills":' /tmp/resume.json
           grep -q '"items":' /tmp/resume.json
+          grep -q '"direct_application":true' /tmp/resume.json
+          if grep -qi 'remoteok.com\|himalayas.app\|arbeitnow.com\|jobicy.com\|remotive.com\|weworkremotely.com' /tmp/resume.json; then
+            echo "Aggregator application URL leaked into primary resume matches."
+            exit 1
+          fi
