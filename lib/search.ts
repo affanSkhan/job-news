@@ -5,8 +5,8 @@ export async function semanticSearch(q:string):Promise<{job:Job;score:number}[]>
   const embedding=await embedText(q);
   try{
     if(embedding){const vector="["+embedding.join(",")+"]";const rows=await sql.query("SELECT id,title,company_name,slug,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status,GREATEST(0,1-(embedding <=> $1::vector))::real AS score FROM public.jobs WHERE status='active' AND embedding IS NOT NULL ORDER BY embedding <=> $1::vector LIMIT 100",[vector]);if(rows.length)return rows.map((r:any)=>({job:map(r),score:Number(r.score||0)}))}
-    const expr="to_tsvector('english',coalesce(title,'')||' '||coalesce(company_name,'')||' '||coalesce(description,'')||' '||coalesce(location,'')||' '||coalesce(category,'')||' '||coalesce(experience,'')||' '||coalesce(array_to_string(skills,' '),''))";
+    const expr="to_tsvector('english',coalesce(title,'')||' '||coalesce(company_name,'')||' '||coalesce(description,'')||' '||coalesce(location,'')||' '||coalesce(category,'')||' '||coalesce(experience,'')||' '||coalesce(array_to_string(skills,' '),'')";
     const sqlText="SELECT *,ts_rank_cd("+expr+",websearch_to_tsquery('english',$1)) AS score FROM public.jobs WHERE status='active' AND "+expr+" @@ websearch_to_tsquery('english',$1) ORDER BY score DESC,published_at DESC LIMIT 100";
-    const rows=await sql.query(sqlText,[q]);return rows.map((r:any)=>({job:map(r),score:Number(r.score||0)});
+    const rows=await sql.query(sqlText,[q]);return rows.map((r:any)=>({job:map(r),score:Number(r.score||0)}));
   }catch{return[]}
 }
