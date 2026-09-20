@@ -5,7 +5,23 @@ const slug=s=>String(s).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-
 const value=(x,...keys)=>{for(const k of keys){if(x?.[k]!==undefined&&x?.[k]!==null&&x?.[k]!=="")return x[k]}};
 function inferType(t){if(/intern|internship|graduate intern/i.test(t))return"internship";if(/fellow/i.test(t))return"fellowship";if(/contract/i.test(t))return"contract";if(/part[- ]time/i.test(t))return"part-time";if(/full[- ]time/i.test(t))return"full-time";return"other"}
 function inferMode(location,title,desc=""){const s=(location+" "+title+" "+desc).toLowerCase();if(/remote|work from home|distributed|worldwide/.test(s))return"remote";if(/hybrid/.test(s))return"hybrid";if(/on[- ]site|onsite|in office/.test(s))return"onsite";return"unknown"}
-function dateOrNow(v){try{const d=typeof v==="number"?new Date(v*1000):new Date(v);return Number.isNaN(d.getTime())?now:d.toISOString()}catch{return now}}
+function dateOrNow(v){
+  const min=Date.parse("1990-01-01T00:00:00.000Z"),max=Date.now()+5*365*24*60*60*1000;
+  try{
+    if(v===undefined||v===null||String(v).trim()==="")return now;
+    const raw=String(v).trim();
+    const numeric=/^-?\\d+(?:\\.\\d+)?$/.test(raw)?Number(raw):null;
+    let d;
+    if(numeric!==null){
+      const n=Math.abs(numeric);
+      d=new Date(n>1e12?numeric:n*1000);
+    }else{
+      d=new Date(v);
+    }
+    const t=d.getTime();
+    return Number.isFinite(t)&&t>=min&&t<=max?d.toISOString():now;
+  }catch{return now}
+}
 function common(x,sourceName,sourceKind){const description=strip(value(x,"description","jobDescription","content","excerpt")||""),title=String(value(x,"title","jobTitle")||"Opportunity"),company=String(value(x,"company","company_name","companyName")||"Unknown company"),location=String(value(x,"location","jobGeo","candidate_required_location")||"Remote"),published=dateOrNow(value(x,"publishedAt","pubDate","publication_date","created_at","updated_at")),updated=dateOrNow(value(x,"updatedAt","updated_at","pubDate","publication_date","created_at")||published),url=String(value(x,"url","jobUrl","applyUrl","applicationLink","absolute_url")||""),fingerprint=hash([title.toLowerCase(),company.toLowerCase(),location.toLowerCase()].join("|")),min=Number(value(x,"salaryMin","annualSalaryMin","salary_min","minSalary")||0)||undefined,max=Number(value(x,"salaryMax","annualSalaryMax","salary_max","maxSalary")||0)||undefined,currency=String(value(x,"salaryCurrency","salaryCurrencyCode","currency")||""),salaryText=String(value(x,"salary","salary_text")||(min||max?[min,max].filter(Boolean).map(v=>Number(v).toLocaleString("en-IN")).join("–")+(currency?" "+currency:""):"Not disclosed")),ts=Date.parse(published);
 return{id:fingerprint,fingerprint,slug:slug(title+"-"+company)+"-"+fingerprint,title,company,description:description.slice(0,18000),location,workMode:inferMode(location,title,description),type:inferType(title),salary:salaryText,salaryMin:min,salaryMax:max,currency,skills:[...(Array.isArray(x?.tags)?x.tags:[]),...(Array.isArray(x?.skills)?x.skills:[]),...(Array.isArray(x?.keywords)?x.keywords:[])].map(String).filter(Boolean).slice(0,25),category:Array.isArray(x?.category)?String(x.category[0]||"Other"):String(x?.category||x?.jobIndustry||"Other"),experience:String(x?.jobLevel||x?.experience||x?.seniority||"Not specified"),publishedAt:published,updatedAt:updated,sourceName,sourceKind,sourceUrl:url,applyUrl:url,verified:true,freshness:Date.now()-ts<86400000?"today":Date.now()-ts<604800000?"this-week":"older",tags:[],raw:x}}
 async function get(url,headers={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);try{const r=await fetch(url,{headers:{"user-agent":"JobNewsBot/2.1 (+https://job-news-prod.onrender.com)",...headers},signal:controller.signal});if(!r.ok)throw new Error(url+" "+r.status);return r}finally{clearTimeout(timer)}}
