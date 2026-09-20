@@ -10,7 +10,6 @@ export const config={
     "/api/applications/:path*",
     "/api/profile/:path*",
     "/api/matches/:path*",
-    "/api/alerts/:path*",
-    "/api/resume"
+    "/api/alerts/:path*"
   ]
 };
