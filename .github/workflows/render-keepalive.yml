@@ -21,6 +21,23 @@ jobs:
           grep -q "JobNews" /tmp/home.html
           wc -c /tmp/home.html
 
+      - name: Wait for direct-application deployment
+        if: ${{ github.event_name != 'schedule' }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 36); do
+            if curl --fail --silent --show-error --connect-timeout 10 --max-time 20 "https://job-news-prod.onrender.com/" > /tmp/deploy-home.html; then
+              if grep -q "direct employer / ATS opportunities immediately" /tmp/deploy-home.html; then
+                echo "Direct-application deployment is live."
+                exit 0
+              fi
+            fi
+            echo "Waiting for the new deployment... attempt $i/36"
+            sleep 5
+          done
+          echo "Timed out waiting for the direct-application deployment."
+          exit 1
+
       - name: Check Render health
         run: |
           set -euo pipefail
