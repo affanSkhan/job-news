@@ -52,7 +52,7 @@ function ensureFingerprint(j){const title=String(j?.title||"Opportunity"),compan
 const normalized=[...byId.values()].map(ensureFingerprint),uniqueByFingerprint=new Map(normalized.map(j=>[j.fingerprint,j])),cutoff=Date.now()-60*24*60*60*1000,jobs=[...uniqueByFingerprint.values()].filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,5000);await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
 let runId=null;
 if(db){
-await db.query("UPDATE public.ingest_runs SET status='failed',finished_at=now(),error='Superseded by a newer ingestion run' WHERE status='running' AND started_at < now()-interval '30 minutes'");
+await db.query("UPDATE public.ingest_runs SET status='failed',finished_at=now(),error='Superseded by a newer ingestion run' WHERE status='running' AND started_at < now()-interval '10 minutes'");
 const runRows=await db.query("INSERT INTO public.ingest_runs(sources_total) VALUES($1) RETURNING id",[SOURCES.length]);runId=runRows[0]?.id;
 const sourceRows=SOURCES.map(s=>({id:s.id,name:s.name,kind:s.kind,url:s.url,enabled:s.enabled!==false,attribution:s.attribution||s.name}));await upsertJson("sources",["id","name","kind","url","enabled","attribution"],["text","text","text","text","boolean","text"],sourceRows,["name","kind","url","enabled","attribution"]);
 await db.query("UPDATE public.sources SET enabled=false,updated_at=now() WHERE id <> ALL($1::text[])",[SOURCES.map(s=>s.id)]);
