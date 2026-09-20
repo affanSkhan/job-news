@@ -268,5 +268,239 @@
     "url": "https://api.lever.co/v0/postings/Fairmat",
     "enabled": true,
     "maxJobs": 250
+  },
+  {
+    "id": "gh-alphasense",
+    "name": "Greenhouse · alphasense",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/alphasense/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "alphasense"
+  },
+  {
+    "id": "gh-cognite",
+    "name": "Greenhouse · cognite",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/cognite/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "cognite"
+  },
+  {
+    "id": "gh-hyreo",
+    "name": "Greenhouse · hyreo",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/hyreo/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "hyreo"
+  },
+  {
+    "id": "gh-point72",
+    "name": "Greenhouse · point72",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/point72/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "point72"
+  },
+  {
+    "id": "gh-capco",
+    "name": "Greenhouse · capco",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/capco/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "capco"
+  },
+  {
+    "id": "gh-jazzx-ai",
+    "name": "Greenhouse · jazzx-ai",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/jazzx-ai/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "jazzx-ai"
+  },
+  {
+    "id": "gh-getwellnetwork",
+    "name": "Greenhouse · getwellnetwork",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/getwellnetwork/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "getwellnetwork"
+  },
+  {
+    "id": "gh-smartbear",
+    "name": "Greenhouse · smartbear",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/smartbear/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "smartbear"
+  },
+  {
+    "id": "gh-enchargeai36",
+    "name": "Greenhouse · enchargeai36",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/enchargeai36/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "enchargeai36"
+  },
+  {
+    "id": "gh-diligentcorporation",
+    "name": "Greenhouse · diligentcorporation",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/diligentcorporation/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "diligentcorporation"
+  },
+  {
+    "id": "gh-eudia",
+    "name": "Greenhouse · eudia",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/eudia/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "eudia"
+  },
+  {
+    "id": "gh-deepintent",
+    "name": "Greenhouse · deepintent",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/deepintent/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "deepintent"
+  },
+  {
+    "id": "gh-nice",
+    "name": "Greenhouse · nice",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/nice/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "nice"
+  },
+  {
+    "id": "gh-zinnia",
+    "name": "Greenhouse · zinnia",
+    "kind": "greenhouse",
+    "url": "https://boards-api.greenhouse.io/v1/boards/zinnia/jobs",
+    "enabled": true,
+    "maxJobs": 250,
+    "board": "zinnia"
+  },
+  {
+    "id": "lever-safe",
+    "name": "Lever · Safe",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/safe",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "safe"
+  },
+  {
+    "id": "lever-100ms",
+    "name": "Lever · 100ms",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/100ms",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "100ms"
+  },
+  {
+    "id": "lever-genesis",
+    "name": "Lever · Genesis",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/genesis",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "genesis"
+  },
+  {
+    "id": "lever-entrata",
+    "name": "Lever · Entrata",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/entrata",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "entrata"
+  },
+  {
+    "id": "lever-shakudo",
+    "name": "Lever · Shakudo",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/shakudo",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "shakudo"
+  },
+  {
+    "id": "lever-sprinto",
+    "name": "Lever · Sprinto",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/Sprinto",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "Sprinto"
+  },
+  {
+    "id": "lever-acceldata",
+    "name": "Lever · Acceldata",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/acceldata",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "acceldata"
+  },
+  {
+    "id": "lever-saviynt",
+    "name": "Lever · Saviynt",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/saviynt",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "saviynt"
+  },
+  {
+    "id": "lever-floqast",
+    "name": "Lever · FloQast",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/floqast",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "floqast"
+  },
+  {
+    "id": "lever-dnb",
+    "name": "Lever · Dun & Bradstreet",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/dnb",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "dnb"
+  },
+  {
+    "id": "lever-levelai",
+    "name": "Lever · Level AI",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/levelai",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "levelai"
+  },
+  {
+    "id": "lever-greenlight",
+    "name": "Lever · Greenlight",
+    "kind": "lever",
+    "url": "https://api.lever.co/v0/postings/greenlight",
+    "enabled": true,
+    "maxJobs": 250,
+    "site": "greenlight"
   }
 ]
