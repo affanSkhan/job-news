@@ -1,6 +1,6 @@
 import Link from "next/link";
-import {getActiveJobsAsync,dedupeJobs} from "../lib/jobs";
-import {isDirectApplication} from "../lib/application";
+import {getActiveJobsAsync,dedupeJobs} from "../../lib/jobs";
+import {isDirectApplication} from "../../lib/application";
 const CITY_TERMS={
   Pune:/pune/i,
   Bengaluru:/bengaluru|bangalore/i,
