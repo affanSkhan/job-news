@@ -10,6 +10,21 @@ function match(j:Job,q:string){
   if(!q)return true;
   return[j.title,j.company,j.location,j.category,j.experience,j.skills.join(" "),j.description].join(" ").toLowerCase().includes(q.toLowerCase());
 }
+function categoryMatch(j:Job,value:string){
+  if(!value)return true;
+  const s=(j.category+" "+j.title+" "+j.skills.join(" ")).toLowerCase();
+  const terms:Record<string,RegExp>={
+    engineering:/engineer|engineering|software|developer|development|sre|platform/i,
+    software:/software|developer|frontend|backend|full stack|mobile/i,
+    ai:/ai|machine learning|ml|artificial intelligence|llm|nlp|computer vision/i,
+    data:/data|analytics|analyst|scientist|bi|business intelligence/i,
+    cloud:/cloud|devops|platform|site reliability|sre|kubernetes|aws|azure|gcp/i,
+    security:/security|cyber|infosec|application security/i,
+    product:/product|program manager|product manager/i,
+    design:/design|designer|ux|ui/i
+  };
+  return terms[value]?terms[value].test(s):s.includes(value.toLowerCase());
+}
 function locationMatch(value:string,needle:string){
   if(!needle)return true;
   const v=value.toLowerCase(),n=needle.toLowerCase();
@@ -44,7 +59,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
     .filter(j=>!mode||j.workMode===mode)
     .filter(j=>locationMatch(j.location,loc))
     .filter(j=>!fresh||j.freshness===fresh)
-    .filter(j=>!category||j.category.toLowerCase().includes(category.toLowerCase()))
+    .filter(j=>categoryMatch(j,category))
     .filter(j=>!experience||experienceMatch(j,experience))
     .filter(j=>!india||INDIA_TERMS.test(j.location));
   const sorted=[...all].sort((a,b)=>{
