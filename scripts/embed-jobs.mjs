@@ -1,5 +1,26 @@
 import {neon} from "@neondatabase/serverless";
-const db=process.env.DATABASE_URL?neon(process.env.DATABASE_URL):null,api=process.env.OPENAI_API_KEY;if(!db||!api){console.log("Embedding worker skipped: missing Neon or OpenAI credentials.");process.exit(0)}
-const jobs=await db.query("SELECT id,title,company_name,description,skills,category,location FROM public.jobs WHERE embedding IS NULL AND status='active' LIMIT $1",[Number(process.env.EMBED_BATCH||60)]);
-for(const j of jobs){const input=[j.title,j.company_name,j.category,j.location,(j.skills||[]).join(", "),String(j.description||"").slice(0,8000)].filter(Boolean).join("\n"),r=await fetch("https://api.openai.com/v1/embeddings",{method:"POST",headers:{Authorization:"Bearer "+api,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_EMBEDDING_MODEL||"text-embedding-3-small",input})});if(!r.ok)continue;const x=await r.json(),vector=x.data?.[0]?.embedding;if(Array.isArray(vector))await db.query("UPDATE public.jobs SET embedding=$1::vector,updated_at=now() WHERE id=$2",["["+vector.join(",")+"]",j.id])}
-console.log("Embedded",jobs.length,"jobs");
+import {pipeline} from "@huggingface/transformers";
+
+const db=process.env.DATABASE_URL?neon(process.env.DATABASE_URL):null;
+if(!db){console.log("Semantic embedding worker skipped: DATABASE_URL missing.");process.exit(0)}
+const model=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";
+const batchSize=Math.max(50,Number(process.env.EMBED_BATCH||300));
+const dim=1536;
+const extractor=await pipeline("feature-extraction",model);
+const rows=await db.query("SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE embedding IS NULL AND status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1",[batchSize]);
+let embedded=0;
+for(let start=0;start<rows.length;start+=80){
+  const batch=rows.slice(start,start+80);
+  const inputs=batch.map(j=>[j.title,j.company_name,j.category,j.location,j.work_mode,j.experience,(j.skills||[]).join(", "),String(j.description||"").slice(0,3500)].filter(Boolean).join("\n"));
+  try{
+    const output=await extractor(inputs,{pooling:"mean",normalize:true});
+    const vectors=output.tolist();
+    for(let i=0;i<batch.length;i++){
+      const vector=Array.from(vectors[i]||[],Number).slice(0,dim);
+      while(vector.length<dim)vector.push(0);
+      await db.query("UPDATE public.jobs SET embedding=$1::vector,updated_at=now() WHERE id=$2",["["+vector.join(",")+"]",batch[i].id]);
+      embedded++;
+    }
+  }catch(e){console.error("embedding batch failed",e?.message||String(e))}
+}
+console.log("Embedded",embedded,"of",rows.length,"jobs using",model);
