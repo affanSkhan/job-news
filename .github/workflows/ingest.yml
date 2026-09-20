@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/ingest.yml","package.json","package-lock.json","scripts/**","data/sources.json","supabase/migrations/**"]
+    paths: [".github/workflows/ingest.yml","package.json","package-lock.json","scripts/**","data/sources.json","db/migrations/**"]
   schedule:
     - cron: "30 3,15 * * *"
 permissions:
@@ -21,18 +21,14 @@ jobs:
       - name: Ingest broad source set
         run: npm run ingest
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GREENHOUSE_BOARDS: ${{ secrets.GREENHOUSE_BOARDS }}
           LEVER_SITES: ${{ secrets.LEVER_SITES }}
           ASHBY_BOARDS: ${{ secrets.ASHBY_BOARDS }}
       - name: AI enrichment
         run: npm run ai:enrich
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_MODEL: Qwen/Qwen3-0.6B:fastest
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -40,18 +36,14 @@ jobs:
       - name: Semantic embeddings
         run: npm run jobs:embed
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_EMBEDDING_MODEL: text-embedding-3-small
           EMBED_BATCH: 80
       - name: User alerts
         run: npm run alerts
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
