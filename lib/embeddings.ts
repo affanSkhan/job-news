@@ -13,8 +13,8 @@ async function localEmbedMany(inputs:string[]):Promise<number[][]>{
   const output:any=await extractor(inputs.map(x=>String(x||"").slice(0,6000)),{pooling:"mean",normalize:true});
   const rows:any[]=output.tolist();
   return rows.map((row:any)=>{
-    const v=Array.from(row as number[],Number).slice(0,DIM);
-    while(v.length<DIM)v.push(0);
+    const v=Array.from(row as number[],Number).slice(0,DB_DIM);
+    if(v.length!==DB_DIM) throw new Error(`Local embedding dimension ${v.length} does not match DB dimension ${DB_DIM}`);
     return v;
   });
 }
