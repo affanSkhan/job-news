@@ -24,6 +24,12 @@ jobs:
       - name: Production build check
         if: ${{ github.event_name != 'schedule' }}
         run: npm run build
+      - name: AI web discovery
+        continue-on-error: true
+        run: npm run web:discover
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WEB_DISCOVERY_MODEL: gpt-5.6
       - name: Discover fresh opportunities
         run: npm run ingest
         env:
