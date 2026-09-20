@@ -18,15 +18,6 @@
     "maxJobs": 250
   },
   {
-    "id": "gh-canva",
-    "name": "Greenhouse · canva",
-    "kind": "greenhouse",
-    "board": "canva",
-    "url": "https://boards-api.greenhouse.io/v1/boards/canva/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "gh-cloudflare",
     "name": "Greenhouse · cloudflare",
     "kind": "greenhouse",
@@ -63,38 +54,11 @@
     "maxJobs": 250
   },
   {
-    "id": "gh-github",
-    "name": "Greenhouse · github",
-    "kind": "greenhouse",
-    "board": "github",
-    "url": "https://boards-api.greenhouse.io/v1/boards/github/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "gh-gitlab",
     "name": "Greenhouse · gitlab",
     "kind": "greenhouse",
     "board": "gitlab",
     "url": "https://boards-api.greenhouse.io/v1/boards/gitlab/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-grammarly",
-    "name": "Greenhouse · grammarly",
-    "kind": "greenhouse",
-    "board": "grammarly",
-    "url": "https://boards-api.greenhouse.io/v1/boards/grammarly/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-hashicorp",
-    "name": "Greenhouse · hashicorp",
-    "kind": "greenhouse",
-    "board": "hashicorp",
-    "url": "https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs",
     "enabled": true,
     "maxJobs": 250
   },
@@ -117,24 +81,6 @@
     "maxJobs": 250
   },
   {
-    "id": "gh-openai",
-    "name": "Greenhouse · openai",
-    "kind": "greenhouse",
-    "board": "openai",
-    "url": "https://boards-api.greenhouse.io/v1/boards/openai/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-plaid",
-    "name": "Greenhouse · plaid",
-    "kind": "greenhouse",
-    "board": "plaid",
-    "url": "https://boards-api.greenhouse.io/v1/boards/plaid/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "gh-reddit",
     "name": "Greenhouse · reddit",
     "kind": "greenhouse",
@@ -144,38 +90,11 @@
     "maxJobs": 250
   },
   {
-    "id": "gh-rippling",
-    "name": "Greenhouse · rippling",
-    "kind": "greenhouse",
-    "board": "rippling",
-    "url": "https://boards-api.greenhouse.io/v1/boards/rippling/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-ramp",
-    "name": "Greenhouse · ramp",
-    "kind": "greenhouse",
-    "board": "ramp",
-    "url": "https://boards-api.greenhouse.io/v1/boards/ramp/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "gh-scaleai",
     "name": "Greenhouse · scaleai",
     "kind": "greenhouse",
     "board": "scaleai",
     "url": "https://boards-api.greenhouse.io/v1/boards/scaleai/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-snowflake",
-    "name": "Greenhouse · snowflake",
-    "kind": "greenhouse",
-    "board": "snowflake",
-    "url": "https://boards-api.greenhouse.io/v1/boards/snowflake/jobs",
     "enabled": true,
     "maxJobs": 250
   },
@@ -198,29 +117,11 @@
     "maxJobs": 250
   },
   {
-    "id": "gh-vanta",
-    "name": "Greenhouse · vanta",
-    "kind": "greenhouse",
-    "board": "vanta",
-    "url": "https://boards-api.greenhouse.io/v1/boards/vanta/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "gh-webflow",
     "name": "Greenhouse · webflow",
     "kind": "greenhouse",
     "board": "webflow",
     "url": "https://boards-api.greenhouse.io/v1/boards/webflow/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "gh-zapier",
-    "name": "Greenhouse · zapier",
-    "kind": "greenhouse",
-    "board": "zapier",
-    "url": "https://boards-api.greenhouse.io/v1/boards/zapier/jobs",
     "enabled": true,
     "maxJobs": 250
   },
@@ -248,15 +149,6 @@
     "kind": "greenhouse",
     "board": "toast",
     "url": "https://boards-api.greenhouse.io/v1/boards/toast/jobs",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "ashby-anthropic",
-    "name": "Ashby · anthropic",
-    "kind": "ashby",
-    "board": "anthropic",
-    "url": "https://api.ashbyhq.com/posting-api/job-board/anthropic",
     "enabled": true,
     "maxJobs": 250
   },
@@ -360,33 +252,6 @@
     "maxJobs": 250
   },
   {
-    "id": "lever-latticehq",
-    "name": "Lever · Lattice",
-    "kind": "lever",
-    "site": "latticehq",
-    "url": "https://api.lever.co/v0/postings/latticehq",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "lever-sourcegraph",
-    "name": "Lever · Sourcegraph",
-    "kind": "lever",
-    "site": "sourcegraph",
-    "url": "https://api.lever.co/v0/postings/sourcegraph",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "lever-honeycomb",
-    "name": "Lever · Honeycomb",
-    "kind": "lever",
-    "site": "honeycomb",
-    "url": "https://api.lever.co/v0/postings/honeycomb",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
     "id": "lever-outsight",
     "name": "Lever · Outsight",
     "kind": "lever",
@@ -401,15 +266,6 @@
     "kind": "lever",
     "site": "Fairmat",
     "url": "https://api.lever.co/v0/postings/Fairmat",
-    "enabled": true,
-    "maxJobs": 250
-  },
-  {
-    "id": "lever-substackinc",
-    "name": "Lever · Substack",
-    "kind": "lever",
-    "site": "substackinc",
-    "url": "https://api.lever.co/v0/postings/substackinc",
     "enabled": true,
     "maxJobs": 250
   }
