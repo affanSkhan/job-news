@@ -1,2 +1,3 @@
-import {createBrowserClient} from "@supabase/ssr";
-export function createBrowserSupabase(){return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL||"",process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||"")}
+"use client";
+import {authClient} from "../auth/client";
+export function createBrowserSupabase(){return {auth:{signInWithPassword:(credentials:{email:string;password:string})=>authClient.signIn.email(credentials),signUp:(credentials:{email:string;password:string;options?:{data?:Record<string,unknown>}})=>authClient.signUp.email({email:credentials.email,password:credentials.password,name:String(credentials.options?.data?.full_name||"")}),signOut:()=>authClient.signOut(),getSession:()=>authClient.getSession(),getUser:()=>authClient.getSession()}};}
