@@ -18,21 +18,8 @@ async function localEmbedMany(inputs:string[]):Promise<number[][]>{
     return v;
   });
 }
-async function openaiEmbedMany(inputs:string[]):Promise<number[][]|null>{
-  const key=process.env.OPENAI_API_KEY;
-  if(!key)return null;
-  try{
-    const r=await fetch("https://api.openai.com/v1/embeddings",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:process.env.OPENAI_EMBEDDING_MODEL||"text-embedding-3-small",input:inputs.map(x=>x.slice(0,12000))})});
-    if(!r.ok)return null;
-    const j=await r.json();
-    const items=[...(j.data||[])].sort((a:any,b:any)=>a.index-b.index);
-    return items.map((x:any)=>Array.from(x.embedding||[],Number));
-  }catch{return null}
-}
 export async function embedTexts(inputs:string[]):Promise<number[][]>{
   if(!inputs.length)return[];
-  const remote=await openaiEmbedMany(inputs);
-  if(remote&&remote.length===inputs.length)return remote;
   return localEmbedMany(inputs);
 }
 export async function embedText(input:string):Promise<number[]|null>{
