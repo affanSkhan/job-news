@@ -1,11 +1,11 @@
-name: JobNews Twice-Daily Intelligence Pipeline
+name: JobNews Radar Intelligence Pipeline
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/ingest.yml","package.json","package-lock.json","scripts/**","lib/**","app/api/**","data/sources.json","data/ats-sources.json","db/migrations/**"]
+    paths: [".github/workflows/ingest.yml",".github/workflows/render-keepalive.yml","package.json","package-lock.json","scripts/**","lib/**","app/api/**","app/components/**","app/page.tsx","app/jobs/**","app/account/**","data/sources.json","data/ats-sources.json","db/migrations/**"]
   schedule:
-    - cron: "30 3,15 * * *"
+    - cron: "*/30 * * * *"
 permissions:
   contents: write
 concurrency:
@@ -22,15 +22,16 @@ jobs:
         with: {node-version: 20, cache: npm}
       - run: npm install --no-audit --no-fund
       - name: Production build check
+        if: ${{ github.event_name != 'schedule' }}
         run: npm run build
-      - name: Ingest broad source set
+      - name: Discover fresh opportunities
         run: npm run ingest
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GREENHOUSE_BOARDS: ${{ secrets.GREENHOUSE_BOARDS }}
           LEVER_SITES: ${{ secrets.LEVER_SITES }}
           ASHBY_BOARDS: ${{ secrets.ASHBY_BOARDS }}
-      - name: AI intelligence enrichment
+      - name: Enrich new opportunities
         run: npm run ai:enrich
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -38,19 +39,17 @@ jobs:
           HF_MODEL: Qwen/Qwen3-0.6B:fastest
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
-          AI_BATCH: 5000
+          AI_BATCH: 250
           AI_REWRITE: "1"
           LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
-          LOCAL_AI_MAX: 20
-      - name: Local semantic embeddings
+          LOCAL_AI_MAX: 25
+      - name: Refresh semantic indexes
         run: npm run jobs:embed
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_EMBEDDING_MODEL: text-embedding-3-small
-          EMBED_BATCH: 5000
+          EMBED_BATCH: 300
           LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
-      - name: User alerts
+      - name: Send eligible alerts
         run: npm run alerts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

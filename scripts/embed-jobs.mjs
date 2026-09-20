@@ -1,34 +1,15 @@
 import {neon} from "@neondatabase/serverless";
 import {pipeline} from "@huggingface/transformers";
-
 const db=process.env.DATABASE_URL?neon(process.env.DATABASE_URL):null;
 if(!db){console.log("Semantic embedding worker skipped: DATABASE_URL missing.");process.exit(0)}
 const model=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";
 const batchSize=Math.max(50,Number(process.env.EMBED_BATCH||300));
 const dim=1536;
 const extractor=await pipeline("feature-extraction",model);
-const forceAll=process.env.EMBED_FORCE_ALL==="1";
-const rows=await db.query(forceAll
-  ?"SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1"
-  :"SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE embedding IS NULL AND status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1",[batchSize]);
-let embedded=0;
-for(let start=0;start<rows.length;start+=80){
-  const batch=rows.slice(start,start+80);
-  const inputs=batch.map(j=>[j.title,j.company_name,j.category,j.location,j.work_mode,j.experience,(j.skills||[]).join(", "),String(j.description||"").slice(0,3500)].filter(Boolean).join("\n"));
-  try{
-    const output=await extractor(inputs,{pooling:"mean",normalize:true});
-    const vectors=output.tolist();
-    const updates=[];
-    for(let i=0;i<batch.length;i++){
-      const native=Array.from(vectors[i]||[],Number);
-      if(!native.length||dim%native.length!==0)throw new Error(`embedding dimension ${native.length} cannot map to ${dim}`);
-      const repeats=dim/native.length;
-      const vector=[];
-      for(let r=0;r<repeats;r++)vector.push(...native);
-      updates.push({id:batch[i].id,embedding:"["+vector.join(",")+"]"});
-      embedded++;
-    }
-    await db.query("UPDATE public.jobs AS j SET embedding=x.embedding::vector,updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,embedding text) WHERE j.id=x.id",[JSON.stringify(updates)]);
-  }catch(e){console.error("embedding batch failed",e?.message||String(e))}
-}
-console.log("Embedded",embedded,"of",rows.length,"jobs using",model,"force-all",forceAll);
+function expand(nativeInput){const native=Array.from(nativeInput||[],Number);if(!native.length||dim%native.length!==0)throw new Error("embedding dimension "+native.length+" cannot map to "+dim);const repeats=dim/native.length,vector=[];for(let r=0;r<repeats;r++)vector.push(...native);return vector}
+const jobRows=await db.query("SELECT id,title,company_name,description,skills,category,location,work_mode,experience FROM public.jobs WHERE embedding IS NULL AND status='active' ORDER BY published_at DESC NULLS LAST LIMIT $1",[batchSize]);
+const profileRows=await db.query("SELECT id,headline,desired_titles,skills,preferred_locations,preferred_work_modes,experience_level,profile_text FROM public.profiles WHERE embedding IS NULL ORDER BY updated_at DESC LIMIT $1",[Math.min(100,batchSize)]);
+let embeddedJobs=0,embeddedProfiles=0;
+for(let start=0;start<jobRows.length;start+=80){const batch=jobRows.slice(start,start+80),inputs=batch.map(j=>[j.title,j.company_name,j.category,j.location,j.work_mode,j.experience,(j.skills||[]).join(", "),String(j.description||"").slice(0,3500)].filter(Boolean).join("\n"));try{const output=await extractor(inputs,{pooling:"mean",normalize:true}),vectors=output.tolist(),updates=batch.map((j,i)=>({id:j.id,embedding:"["+expand(vectors[i]).join(",")+"]"}));await db.query("UPDATE public.jobs AS j SET embedding=x.embedding::vector,updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,embedding text) WHERE j.id=x.id",[JSON.stringify(updates)]);embeddedJobs+=updates.length}catch(e){console.error("job embedding batch failed",e?.message||String(e))}}
+for(let start=0;start<profileRows.length;start+=50){const batch=profileRows.slice(start,start+50),inputs=batch.map(p=>[p.headline,(p.desired_titles||[]).join(", "),(p.skills||[]).join(", "),(p.preferred_locations||[]).join(", "),(p.preferred_work_modes||[]).join(", "),p.experience_level,p.profile_text].filter(Boolean).join("\n")).map(x=>String(x).slice(0,7000));try{const output=await extractor(inputs,{pooling:"mean",normalize:true}),vectors=output.tolist(),updates=batch.map((p,i)=>({id:p.id,embedding:"["+expand(vectors[i]).join(",")+"]"}));await db.query("UPDATE public.profiles AS p SET embedding=x.embedding::vector,updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id uuid,embedding text) WHERE p.id=x.id",[JSON.stringify(updates)]);embeddedProfiles+=updates.length}catch(e){console.error("profile embedding batch failed",e?.message||String(e))}}
+console.log("Radar embeddings:",{embeddedJobs,embeddedProfiles,jobCandidates:jobRows.length,profileCandidates:profileRows.length,model});
