@@ -15,12 +15,14 @@ for(let start=0;start<rows.length;start+=80){
   try{
     const output=await extractor(inputs,{pooling:"mean",normalize:true});
     const vectors=output.tolist();
+    const updates=[];
     for(let i=0;i<batch.length;i++){
       const vector=Array.from(vectors[i]||[],Number).slice(0,dim);
       while(vector.length<dim)vector.push(0);
-      await db.query("UPDATE public.jobs SET embedding=$1::vector,updated_at=now() WHERE id=$2",["["+vector.join(",")+"]",batch[i].id]);
+      updates.push({id:batch[i].id,embedding:"["+vector.join(",")+"]"});
       embedded++;
     }
+    await db.query("UPDATE public.jobs AS j SET embedding=x.embedding::vector,updated_at=now() FROM jsonb_to_recordset($1::jsonb) AS x(id text,embedding text) WHERE j.id=x.id",[JSON.stringify(updates)]);
   }catch(e){console.error("embedding batch failed",e?.message||String(e))}
 }
 console.log("Embedded",embedded,"of",rows.length,"jobs using",model);
