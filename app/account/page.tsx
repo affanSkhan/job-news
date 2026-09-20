@@ -34,7 +34,7 @@ export default async function Account(){
       <header className="nav">
         <div className="container navin">
           <Link className="brand" href="/">Job<span>News</span></Link>
-          <div className="links"><Link href="/jobs">Explore</Link><SignOut/></div>
+          <div className="links"><Link href="/jobs">Explore</Link><Link href="/india">🇮🇳 India</Link><Link href="/internships">Internships</Link><Link href="/remote-jobs">Remote</Link><SignOut/></div>
         </div>
       </header>
       <div className="container section">
