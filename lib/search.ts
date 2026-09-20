@@ -1,7 +1,7 @@
-import {getDb} from "./db";import {embedText} from "./embeddings";import type {Job} from "./jobs";import {getActiveJobs} from "./jobs";
+import {getDb} from "./db";import {embedText} from "./embeddings";import type {Job} from "./jobs";
 function map(r:any):Job{return{id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:r.description||"",location:r.location,workMode:r.work_mode,type:r.employment_type,salary:r.salary_text,salaryMin:r.salary_min,salaryMax:r.salary_max,currency:r.currency,skills:r.skills||[],category:r.category||"Other",experience:r.experience||"Not specified",publishedAt:String(r.published_at||""),updatedAt:String(r.updated_at||""),sourceName:r.source_name||"",sourceUrl:r.source_url||"",applyUrl:r.apply_url||"",verified:Boolean(r.verified),freshness:r.freshness||"older",tags:r.tags||[],aiSummary:r.ai_summary||undefined,aiHighlights:r.ai_highlights||[],companyId:r.company_id||undefined,status:r.status||"active"}}
 export async function semanticSearch(q:string):Promise<{job:Job;score:number}[]>{
-  const sql=getDb();if(!sql)return getActiveJobs().filter(j=>(j.title+" "+j.company+" "+j.description+" "+j.skills.join(" ")).toLowerCase().includes(q.toLowerCase())).slice(0,100).map(job=>({job,score:0}));
+  const sql=getDb();if(!sql)return [];
   const embedding=await embedText(q);
   try{
     if(embedding){const vector="["+embedding.join(",")+"]";const rows=await sql.query("SELECT id,title,company_name,slug,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status,GREATEST(0,1-(embedding <=> $1::vector))::real AS score FROM public.jobs WHERE status='active' AND embedding IS NOT NULL ORDER BY embedding <=> $1::vector LIMIT 100",[vector]);if(rows.length)return rows.map((r:any)=>({job:map(r),score:Number(r.score||0)}))}
