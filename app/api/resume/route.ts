@@ -1,21 +1,11 @@
 import {NextResponse} from "next/server";
 import {getCurrentUser,ensureProfile} from "../../../lib/current-user";
 import {getDb} from "../../../lib/db";
-import {parseResume} from "../../../lib/resume-parser";import {isDirectApplication,applicationDestination} from "../../../lib/application";
+import {parseResume} from "../../../lib/resume-parser";
+import {isDirectApplication,applicationDestination} from "../../../lib/application";
 
 export const runtime="nodejs";
 export const maxDuration=30;
-
-function applicationType(url:string,company:string){
-  try{
-    const host=new URL(url).hostname.toLowerCase();
-    if(/greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com/.test(host))return "employer_ats";
-    const token=company.toLowerCase().replace(/[^a-z0-9]/g," ").trim().split(/\s+/)[0];
-    if(token&&host.replace(/^www\./,"").includes(token))return "employer_site";
-    if(/linkedin\.com|indeed\.com|glassdoor\.|ziprecruiter\.|wellfound\.com|monster\.|dice\.com/.test(host))return "third_party";
-    return "external";
-  }catch{return "unknown"}
-}
 
 function scoreJob(job:any,skills:string[],roles:string[]){
   const jobSkills=Array.isArray(job.skills)?job.skills.map((x:any)=>String(x).toLowerCase()):[];
