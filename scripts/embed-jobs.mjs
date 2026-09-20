@@ -20,8 +20,11 @@ for(let start=0;start<rows.length;start+=80){
     const vectors=output.tolist();
     const updates=[];
     for(let i=0;i<batch.length;i++){
-      const vector=Array.from(vectors[i]||[],Number).slice(0,dim);
-      while(vector.length<dim)vector.push(0);
+      const native=Array.from(vectors[i]||[],Number);
+      if(!native.length||dim%native.length!==0)throw new Error(`embedding dimension ${native.length} cannot map to ${dim}`);
+      const repeats=dim/native.length;
+      const vector=[];
+      for(let r=0;r<repeats;r++)vector.push(...native);
       updates.push({id:batch[i].id,embedding:"["+vector.join(",")+"]"});
       embedded++;
     }
