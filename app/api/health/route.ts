@@ -1,13 +1,32 @@
 import {NextResponse} from "next/server";
 import {getDb} from "../../../lib/db";
+import {parseResume} from "../../../lib/resume-parser";
 
-export async function GET(){
+function smokePdf(){
+  const objects=[
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n",
+    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
+    "5 0 obj << /Length 202 >> stream\nBT /F1 12 Tf 72 720 Td (JobNews Resume Parser Smoke Test) Tj 0 -24 Td (Python TypeScript React FastAPI PostgreSQL Machine Learning) Tj 0 -24 Td (Software Engineer Intern runtime validation text for the PDF parser.) Tj ET\nendstream endobj\n"
+  ];
+  const header="%PDF-1.4\n";
+  let body=header;
+  const offsets=[0];
+  for(const object of objects){offsets.push(Buffer.byteLength(body,"binary"));body+=object}
+  const xrefOffset=Buffer.byteLength(body,"binary");
+  body+="xref\n0 "+(objects.length+1)+"\n0000000000 65535 f \n";
+  for(let i=1;i<=objects.length;i++)body+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+  body+="trailer << /Size "+(objects.length+1)+" /Root 1 0 R >>\nstartxref\n"+xrefOffset+"\n%%EOF\n";
+  return Buffer.from(body,"binary");
+}
+
+export async function GET(req:Request){
   const sql=getDb();
   let databaseReachable=false;
   let activeJobs=0;
   let enabledSources=0;
   let lastRun=null;
-
   if(sql){
     try{
       const rows=await sql.query(`SELECT
@@ -22,19 +41,18 @@ export async function GET(){
       activeJobs=Number(rows[0]?.active_jobs||0);
       enabledSources=Number(rows[0]?.enabled_sources||0);
       lastRun=rows[0]?.last_run||null;
-    }catch{
-      databaseReachable=false;
-    }
+    }catch{}
   }
 
-  return NextResponse.json({
-    ok:true,
-    service:"job-news",
-    activeJobs,
-    databaseConfigured:Boolean(sql),
-    databaseReachable,
-    enabledSources,
-    lastRun,
-    time:new Date().toISOString()
-  });
+  const result:any={ok:true,service:"job-news",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
+  if(new URL(req.url).searchParams.get("check")==="resume"){
+    try{
+      const parsed=await parseResume(smokePdf(),"application/pdf");
+      result.resumeParser={ok:true,textLength:parsed.text.length,skills:parsed.skills,roles:parsed.roles};
+    }catch(error){
+      result.ok=false;
+      result.resumeParser={ok:false,error:error instanceof Error?error.message:String(error)};
+    }
+  }
+  return NextResponse.json(result,{status:result.ok?200:503});
 }
