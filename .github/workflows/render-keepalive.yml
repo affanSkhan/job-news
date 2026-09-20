@@ -30,6 +30,7 @@ jobs:
           grep -q '"databaseReachable":true' /tmp/health.json
 
       - name: Check deployed PDF parser
+        if: ${{ github.event_name != 'schedule' }}
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/api/health?check=resume" > /tmp/resume-health.json
@@ -37,6 +38,7 @@ jobs:
           grep -q '"resumeParser":{"ok":true' /tmp/resume-health.json
 
       - name: Check anonymous PDF resume upload
+        if: ${{ github.event_name != 'schedule' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
