@@ -10,6 +10,16 @@ function match(j:Job,q:string){
   if(!q)return true;
   return[j.title,j.company,j.location,j.category,j.experience,j.skills.join(" "),j.description].join(" ").toLowerCase().includes(q.toLowerCase());
 }
+function locationMatch(value:string,needle:string){
+  if(!needle)return true;
+  const v=value.toLowerCase(),n=needle.toLowerCase();
+  const aliases:Record<string,string[]>={
+    bengaluru:["bengaluru","bangalore"],bangalore:["bengaluru","bangalore"],
+    "delhi-ncr":["delhi","gurgaon","gurugram","noida","new delhi"],
+    pune:["pune"],hyderabad:["hyderabad"],mumbai:["mumbai"],chennai:["chennai"],ahmedabad:["ahmedabad"],kolkata:["kolkata"],jaipur:["jaipur"],kochi:["kochi"],indore:["indore"],nagpur:["nagpur"]
+  };
+  return (aliases[n]||[n]).some(x=>v.includes(x));
+}
 function experienceMatch(j:Job,value:string){
   if(!value)return true;
   const s=(j.experience+" "+j.title).toLowerCase();
@@ -32,7 +42,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
     .filter(j=>match(j,q))
     .filter(j=>!type||j.type===type)
     .filter(j=>!mode||j.workMode===mode)
-    .filter(j=>!loc||j.location.toLowerCase().includes(loc.toLowerCase()))
+    .filter(j=>locationMatch(j.location,loc))
     .filter(j=>!fresh||j.freshness===fresh)
     .filter(j=>!category||j.category.toLowerCase().includes(category.toLowerCase()))
     .filter(j=>!experience||experienceMatch(j,experience))
