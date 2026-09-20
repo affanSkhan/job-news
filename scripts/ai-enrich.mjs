@@ -41,7 +41,8 @@ function validResult(x,job){
 function weakSummary(job){
   if(!job.aiSummary)return true;
   const s=String(job.aiSummary||"");
-  return s.length<60||s.length>420||overlapScore(s,[job.title,job.company,job.location,job.description,Array.isArray(job.skills)?job.skills.join(" "):""].join(" "))<0.28||repetitionScore(s)<0.62;
+  const lower=s.toLowerCase();
+return s.length<80||s.length>360||overlapScore(s,[job.title,job.company,job.location,job.description,Array.isArray(job.skills)?job.skills.join(" "):""].join(" "))<0.55||repetitionScore(s)<0.72||lower.includes("mention the word")||lower.includes("tag ")||lower.includes("follow us")||lower.includes("subscribe");
 }
 function fallbackHighlights(job){
   const out=[];
@@ -87,10 +88,11 @@ async function localEnrich(job){
     return validResult({summary:text,highlights:fallbackHighlights(job)},job);
   }catch{return null}
 }
-let enriched=0,localUsed=0,fallbackUsed=0;
+let enriched=0,localUsed=0,fallbackUsed=0,localAttempts=0;
+const localMax=Number(process.env.LOCAL_AI_MAX||120);
 for(const job of targets){
   let x=await remoteEnrich(job);
-  if(!x){x=await localEnrich(job);if(x)localUsed++}
+  if(!x&&localAttempts<localMax){localAttempts++;x=await localEnrich(job);if(x)localUsed++}
   if(!x){x={summary:extractiveSummary(job),highlights:fallbackHighlights(job)};fallbackUsed++}
   job.aiSummary=x.summary;
   job.aiHighlights=x.highlights||[];
