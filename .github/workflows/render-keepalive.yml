@@ -15,7 +15,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Keep Render service warm
+      - name: Check Render homepage
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 8 \
+            --retry-delay 5 \
+            --retry-max-time 180 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 45 \
+            "https://job-news-prod.onrender.com/" > /tmp/home.html
+          test -s /tmp/home.html
+          grep -q "Every useful job lead" /tmp/home.html
+          wc -c /tmp/home.html
+
+      - name: Check Render health
         run: |
           set -euo pipefail
           curl --fail --silent --show-error \
