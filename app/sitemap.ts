@@ -1,5 +1,5 @@
 import type {MetadataRoute} from "next";
-import {getActiveJobsAsync,slugify,companySlug} from "../lib/jobs";
+import {getActiveJobsAsync,slugify,companySlug} from "../lib/jobs";\n\nexport const dynamic="force-dynamic";\nexport const revalidate=3600;
 
 function safeDate(value:string|undefined){
   const date=new Date(value||"");
