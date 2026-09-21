@@ -72,6 +72,11 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      - name: Report degraded database mode
+        if: steps.ingest.outcome == 'failure'
+        run: |
+          echo "::warning::Database sync failed (often due provider quota/network limits). The public JSON cache was still generated from the available sources; DB-backed enrichment, embeddings, and alerts were skipped."
+
       - name: Publish public job cache
         if: always()
         run: |
@@ -87,11 +92,15 @@ jobs:
 
           git commit -m "chore: refresh public job cache [skip ci]"
 
-          # Render/other GitHub Actions may update main while this pipeline is
-          # collecting jobs. Rebase onto the newest main before publishing so
-          # generated-cache pushes do not fail on harmless fast-forward races.
+          # web-discover writes a local artifact that is intentionally not part
+          # of the public cache commit. Stash all remaining local changes before
+          # rebasing onto main so harmless concurrent deployments cannot block
+          # the cache publish.
+          git stash push --include-untracked -m "rolepilot-ci-generated" || true
+
           for attempt in 1 2 3; do
-            if git pull --rebase origin main && git push origin HEAD:main; then
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
               echo "Published public job cache."
               exit 0
             fi
