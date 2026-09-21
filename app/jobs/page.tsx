@@ -39,11 +39,11 @@ function locationMatch(value:string,needle:string){
 function experienceMatch(j:Job,value:string){
   if(!value)return true;
   const s=(j.experience+" "+j.title).toLowerCase();
-  if(value==="fresher")return j.experience==="fresher"||j.type==="internship"||/\\bintern(?:ship)?\\b|\\btrainee\\b|\\bapprentice\\b|\\bnew grad(?:uate)?\\b|\\bfresher\\b|\\bentry[- ]level\\b/.test(s);
-  if(value==="0-1")return j.experience==="fresher"||/\\b0[-– ]?1\\b|\\b0 to 1\\b/.test(s);
-  if(value==="1-3")return j.experience==="0-3"||/\\b1[-– ]?3\\b|\\b1 to 3\\b|\\b2[-– ]?3\\b|\\b2 to 3\\b|\\bjunior\\b/.test(s);
-  if(value==="3-5")return j.experience==="3-5"||/\\b3[-– ]?5\\b|\\b3 to 5\\b|\\b4[-– ]?5\\b|\\bmid\\b/.test(s);
-  if(value==="5+")return /\\b5\+\\b|\\b5 or more\\b|\\bsenior\\b|\\blead\\b|\\bprincipal\\b|\\bstaff\\b|\\bmanager\\b|\\bdirector\\b/.test(s);
+  if(value==="fresher")return j.experience==="fresher"||j.type==="internship"||/\bintern(?:ship)?\b|\btrainee\b|\bapprentice\b|\bnew grad(?:uate)?\b|\bfresher\b|\bentry[- ]level\b/.test(s);
+  if(value==="0-1")return j.experience==="fresher"||/\b0[-– ]?1\b|\b0 to 1\b/.test(s);
+  if(value==="1-3")return j.experience==="0-3"||/\b1[-– ]?3\b|\b1 to 3\b|\b2[-– ]?3\b|\b2 to 3\b|\bjunior\b/.test(s);
+  if(value==="3-5")return j.experience==="3-5"||/\b3[-– ]?5\b|\b3 to 5\b|\b4[-– ]?5\b|\bmid\b/.test(s);
+  if(value==="5+")return /\b5\+\b|\b5 or more\b|\bsenior\b|\blead\b|\bprincipal\b|\bstaff\b|\bmanager\b|\bdirector\b/.test(s);
   return true;
 }
 export async function generateMetadata({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}):Promise<Metadata>{
