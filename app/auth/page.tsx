@@ -13,6 +13,7 @@ export default function AuthPage(){
   const [name,setName]=useState("");
   const [msg,setMsg]=useState("");
   const [busy,setBusy]=useState(false);
+  const [resetSent,setResetSent]=useState(false);
 
   async function submit(e:React.FormEvent){
     e.preventDefault();
@@ -58,7 +59,21 @@ export default function AuthPage(){
           <button className="btn" disabled={busy}>{busy?(mode==="in"?"Signing in…":"Creating account…"):(mode==="in"?"Sign in":"Create account")}</button>
         </form>
 
+        {mode==="in"&&<button className="chip" disabled={busy} style={{marginTop:12}} onClick={async()=>{
+          setMsg("");
+          setResetSent(false);
+          if(!email){setMsg("Enter your email first.");return}
+          setBusy(true);
+          try{
+            const result=await authClient.requestPasswordReset({email,redirectTo:window.location.origin+"/auth/reset-password"});
+            if(result.error){setMsg(result.error.message??"Unable to send reset email.");return}
+            setResetSent(true);
+          }catch(error){setMsg(error instanceof Error?error.message:"Unable to send reset email.")}
+          finally{setBusy(false)}
+        }}>{resetSent?"Reset email sent":"Forgot password?"}</button>}
+
         {msg&&<p className="auth-message" role="alert">{msg}</p>}
+        {resetSent&&<div className="auth-page-note"><b>Check your inbox.</b><span>We sent a password reset link to {email}.</span></div>}
 
         <button className="chip" style={{marginTop:12}} disabled={busy} onClick={()=>{setMode(mode==="in"?"up":"in");setMsg("")}}>
           {mode==="in"?"Need an account? Create one":"Already have an account? Sign in"}
