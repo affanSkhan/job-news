@@ -1,39 +1,57 @@
 import type {MetadataRoute} from "next";
 import {getActiveJobsAsync,slugify,companySlug} from "../lib/jobs";
+import {SITE_URL} from "../lib/site";
+
+function safeDate(value:string|undefined){
+  const date=new Date(value||"");
+  return Number.isFinite(date.getTime())?date:undefined;
+}
 
 export const dynamic="force-dynamic";
 export const revalidate=3600;
 
-function safeDate(value:string|undefined){
-  const date=new Date(value||"");
-  return Number.isFinite(date.getTime())?date:new Date();
-}
-
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
-  const base=process.env.NEXT_PUBLIC_SITE_URL||"https://job-news-prod.onrender.com";
   const jobs=await getActiveJobsAsync();
-  const companies=new Set<string>();
-  const skills=new Set<string>();
-  const locations=new Set<string>();
+  const companies=new Map<string,Date>();
+  const skills=new Map<string,Date>();
+  const locations=new Map<string,Date>();
 
   for(const j of jobs){
-    if(j.company)companies.add(companySlug(j.company));
-    for(const s of j.skills)skills.add(slugify(s));
-    if(j.location)locations.add(slugify(j.location));
+    const updated=safeDate(j.updatedAt||j.publishedAt);
+    if(!updated)continue;
+    if(j.company){
+      const key=companySlug(j.company);
+      const prev=companies.get(key);
+      if(!prev||updated>prev)companies.set(key,updated);
+    }
+    for(const s of j.skills){
+      const key=slugify(s);
+      const prev=skills.get(key);
+      if(!prev||updated>prev)skills.set(key,updated);
+    }
+    if(j.location){
+      const key=slugify(j.location);
+      const prev=locations.get(key);
+      if(!prev||updated>prev)locations.set(key,updated);
+    }
   }
 
   return [
-    {url:base,lastModified:new Date(),priority:1},
-    {url:base+"/jobs",lastModified:new Date(),priority:.95},
-    {url:base+"/companies",lastModified:new Date(),priority:.85},
-    {url:base+"/skills",lastModified:new Date(),priority:.8},
-    {url:base+"/locations",lastModified:new Date(),priority:.8},
-    {url:base+"/about",lastModified:new Date(),priority:.5},
-    {url:base+"/privacy",lastModified:new Date(),priority:.2},
-    {url:base+"/disclaimer",lastModified:new Date(),priority:.2},
-    ...[...companies].map(x=>({url:base+"/companies/"+x,lastModified:new Date(),priority:.65})),
-    ...[...skills].map(x=>({url:base+"/skills/"+x,lastModified:new Date(),priority:.6})),
-    ...[...locations].map(x=>({url:base+"/locations/"+x,lastModified:new Date(),priority:.6})),
-    ...jobs.map(j=>({url:base+"/jobs/"+j.slug,lastModified:safeDate(j.updatedAt||j.publishedAt),priority:.8}))
+    {url:SITE_URL},
+    {url:SITE_URL+"/jobs"},
+    {url:SITE_URL+"/india",lastModified:new Date()},
+    {url:SITE_URL+"/internships"},
+    {url:SITE_URL+"/remote-jobs"},
+    {url:SITE_URL+"/companies"},
+    {url:SITE_URL+"/skills"},
+    {url:SITE_URL+"/locations"},
+    {url:SITE_URL+"/about"},
+    ...[...companies.entries()].map(([x,lastModified])=>({url:SITE_URL+"/companies/"+x,lastModified})),
+    ...[...skills.entries()].map(([x,lastModified])=>({url:SITE_URL+"/skills/"+x,lastModified})),
+    ...[...locations.entries()].map(([x,lastModified])=>({url:SITE_URL+"/locations/"+x,lastModified})),
+    ...jobs.map(j=>({
+      url:SITE_URL+"/jobs/"+j.slug,
+      lastModified:safeDate(j.updatedAt||j.publishedAt)
+    }))
   ];
 }
