@@ -33,6 +33,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WEB_DISCOVERY_MODEL: gpt-5.6
       - name: Discover fresh opportunities
+        id: ingest
+        continue-on-error: true
         run: npm run ingest
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -40,6 +42,7 @@ jobs:
           LEVER_SITES: ${{ secrets.LEVER_SITES }}
           ASHBY_BOARDS: ${{ secrets.ASHBY_BOARDS }}
       - name: Enrich new opportunities
+        if: steps.ingest.outcome == 'success'
         run: npm run ai:enrich
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -52,23 +55,27 @@ jobs:
           LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
           LOCAL_AI_MAX: 25
       - name: Refresh semantic indexes
+        if: steps.ingest.outcome == 'success'
         run: npm run jobs:embed
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           EMBED_BATCH: 300
           LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
       - name: Send eligible alerts
+        if: steps.ingest.outcome == 'success'
         run: npm run alerts
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-      - name: Publish dependency lock changes only
+      - name: Publish public job cache
+        if: always()
         run: |
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/public-jobs.json data/public-jobs-meta.json
           git add -u package-lock.json
-          if git diff --cached --quiet; then echo "No repository metadata changes."; exit 0; fi
-          git commit -m "chore: refresh repository metadata [skip ci]"
+          if git diff --cached --quiet; then echo "No generated cache changes."; exit 0; fi
+          git commit -m "chore: refresh public job cache [skip ci]"
           git push

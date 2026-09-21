@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import {getDb} from "./db";
 export type Job={id:string;slug:string;title:string;company:string;description:string;location:string;workMode:"remote"|"hybrid"|"onsite"|"unknown";type:"full-time"|"part-time"|"contract"|"internship"|"fellowship"|"other";salary:string;salaryMin?:number;salaryMax?:number;currency?:string;skills:string[];category:string;experience:string;publishedAt:string;updatedAt:string;sourceName:string;sourceUrl:string;applyUrl:string;verified:boolean;freshness:"today"|"this-week"|"older";tags:string[];aiSummary?:string;aiHighlights?:string[];companyId?:string;status?:string};
 export function slugify(v:string){return v.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,82)}
@@ -10,12 +12,31 @@ function jobQuality(j:Job){return(jobCompanyKnown(j.company)?100:0)+Math.min(35,
 export function dedupeJobs(input:Job[]){const map=new Map<string,Job>();for(const job of input){const key=canonicalApplicationUrl(job.applyUrl)||("fallback:"+[job.title,job.company,job.location].map(x=>String(x||"").toLowerCase().trim()).join("|"));const prev=map.get(key);if(!prev){map.set(key,job);continue}const winner=jobQuality(job)>jobQuality(prev)?job:prev;map.set(key,winner)}return [...map.values()]}
 function normalize(j:any):Job{return {...j,id:String(j.id||""),title:typeof j.title==="string"&&j.title.trim()?j.title:"Untitled opportunity",slug:typeof j.slug==="string"&&j.slug.trim()?j.slug:slugify(String(j.title||"opportunity")),company:typeof j.company==="string"&&j.company.trim()?j.company:"Unknown company",description:cleanJobText(String(j.description||"")),location:typeof j.location==="string"&&j.location.trim()?j.location:"Location not specified",workMode:["remote","hybrid","onsite","unknown"].includes(j.workMode)?j.workMode:"unknown",type:["full-time","part-time","contract","internship","fellowship","other"].includes(j.type)?j.type:"other",salary:typeof j.salary==="string"?j.salary:"Not disclosed",salaryMin:typeof j.salaryMin==="number"?j.salaryMin:undefined,salaryMax:typeof j.salaryMax==="number"?j.salaryMax:undefined,currency:typeof j.currency==="string"?j.currency:undefined,skills:Array.isArray(j.skills)?j.skills.map(String).filter(Boolean):[],category:typeof j.category==="string"&&j.category.trim()?j.category:"Other",experience:typeof j.experience==="string"?j.experience:"Not specified",publishedAt:dateString(j.publishedAt),updatedAt:dateString(j.updatedAt),sourceName:typeof j.sourceName==="string"?j.sourceName:"Unknown source",sourceUrl:typeof j.sourceUrl==="string"?j.sourceUrl:"",applyUrl:typeof j.applyUrl==="string"?j.applyUrl:j.sourceUrl||"",verified:Boolean(j.verified),freshness:["today","this-week","older"].includes(j.freshness)?j.freshness:"older",tags:Array.isArray(j.tags)?j.tags.map(String).filter(Boolean):[],aiSummary:typeof j.aiSummary==="string"?cleanJobText(j.aiSummary):undefined,aiHighlights:Array.isArray(j.aiHighlights)?j.aiHighlights.map((x:any)=>cleanJobText(String(x))).filter(Boolean):[],companyId:typeof j.companyId==="string"?j.companyId:undefined,status:typeof j.status==="string"?j.status:"active"}}
 function row(r:any):Job{return normalize({id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:"",location:r.location,workMode:r.work_mode,type:r.employment_type,salary:r.salary_text,salaryMin:r.salary_min,salaryMax:r.salary_max,currency:r.currency,skills:r.skills,category:r.category,experience:r.experience,publishedAt:r.published_at,updatedAt:r.updated_at,sourceName:r.source_name,sourceUrl:r.source_url,applyUrl:r.apply_url,verified:r.verified,freshness:r.freshness,tags:r.tags,aiSummary:r.ai_summary,aiHighlights:r.ai_highlights,companyId:r.company_id,status:r.status})}
-const JOB_COLUMNS="id,slug,title,company_name,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
+const PUBLIC_CACHE=path.join(process.cwd(),"data","public-jobs.json");
+let cache:Job[]|null=null;
+function readPublicCache():Job[]{
+  if(cache)return cache;
+  try{
+    const raw=fs.readFileSync(PUBLIC_CACHE,"utf8");
+    const parsed=JSON.parse(raw);
+    cache=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
+    return cache;
+  }catch{return []}
+}
+function fallbackStats(){
+  const jobs=readPublicCache();
+  return{
+    active:jobs.length,
+    today:jobs.filter(j=>j.freshness==="today").length,
+    internships:jobs.filter(j=>j.type==="internship").length,
+    remote:jobs.filter(j=>j.workMode==="remote").length
+  };
+}const JOB_COLUMNS="id,slug,title,company_name,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
 const JOB_DETAIL_COLUMNS="id,slug,title,company_name,description,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
-export async function getActiveJobStatsAsync(){const sql=getDb();if(!sql)return{active:0,today:0,internships:0,remote:0};try{const rows=await sql.query(`SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'`,[]);const r=rows[0]||{};return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}}catch{return{active:0,today:0,internships:0,remote:0}}}
-export async function getActiveJobsAsync(limit=5000){const sql=getDb();if(!sql)return [];try{const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));const data=await sql.query(`SELECT ${JOB_COLUMNS} FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT ${safeLimit}`,[]);return dedupeJobs(data.map(row))}catch{return []}}
-export async function getJobAsync(slug:string){const sql=getDb();if(!sql)return undefined;try{const data=await sql.query(`SELECT ${JOB_DETAIL_COLUMNS} FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1`,[slug]);return data[0]?row(data[0]):undefined}catch{return undefined}}
-export function getJobs():Job[]{return []}
-export function getActiveJobs():Job[]{return []}
-export function getJob(slug:string):Job|undefined{return undefined}
+export async function getActiveJobStatsAsync(){const sql=getDb();if(!sql)return fallbackStats();try{const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);const r=rows[0]||{};return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}}catch{return fallbackStats()}}
+export async function getActiveJobsAsync(limit=5000){const sql=getDb();const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));if(!sql)return readPublicCache().slice(0,safeLimit);try{const data=await sql.query("SELECT "+JOB_COLUMNS+" FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT "+safeLimit,[]);return dedupeJobs(data.map(row))}catch{return readPublicCache().slice(0,safeLimit)}}
+export async function getJobAsync(slug:string){const sql=getDb();if(!sql)return readPublicCache().find(j=>j.slug===slug);try{const data=await sql.query("SELECT "+JOB_DETAIL_COLUMNS+" FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1",[slug]);return data[0]?row(data[0]):readPublicCache().find(j=>j.slug===slug)}catch{return readPublicCache().find(j=>j.slug===slug)}}
+export function getJobs():Job[]{return readPublicCache()}
+export function getActiveJobs():Job[]{return readPublicCache().filter(j=>j.status==="active")}
+export function getJob(slug:string):Job|undefined{return readPublicCache().find(j=>j.slug===slug)}
 export function titleFor(j:Job){return j.title+" at "+j.company+" — RolePilot"}export function descFor(j:Job){return "Find "+[j.title,"at "+j.company,j.location,j.type,j.salary,j.skills.slice(0,5).join(", ")].filter(Boolean).join(" · ")+". View source details and apply directly through the original employer or job source."}export function companySlug(name:string){return slugify(name)}
