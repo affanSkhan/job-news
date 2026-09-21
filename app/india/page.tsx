@@ -20,7 +20,7 @@ export default async function India(){
  const counts=Object.entries(CITY_TERMS).map(([name,re])=>({name,count:jobs.filter(j=>re.test(j.location)).length})).sort((a,b)=>b.count-a.count);
  const IndiaRemote=jobs.filter(j=>/india/i.test(j.location)&&j.workMode==="remote").length;
  const fresh=jobs.filter(j=>j.freshness==="today").length;
- const IndiaFreshers=jobs.filter(j=>/fresh|graduate|entry|intern|trainee|0[-– ]?2|0[-– ]?1/i.test((j.experience+" "+j.title).toLowerCase())).length;
+ const IndiaFreshers=jobs.filter(j=>j.experience==="fresher"||j.type==="internship").length;
  return <main>
   <header className="nav"><div className="container navin"><Link href="/" className="brand">Role<span>Pilot</span></Link><nav className="links"><Link href="/jobs">Explore</Link><Link className="active-nav" href="/india">🇮🇳 India</Link><Link href="/internships">Internships</Link><Link href="/remote-jobs">Remote</Link><Link href="/companies">Companies</Link><Link href="/skills">Skills</Link><Link href="/locations">Locations</Link><Link href="/account">Your Radar</Link></nav></div></header>
   <section className="india-hero"><div className="container"><div className="eyebrow">India opportunity radar</div><h1>Jobs for India, without the noise.</h1><p>Verified direct-employer and ATS opportunities across India — with extra focus on freshers, graduates, internships and early-career technology roles.</p><div className="india-stats"><div><b>{jobs.length}</b><span>India opportunities</span></div><div><b>{fresh}</b><span>found today</span></div><div><b>{IndiaRemote}</b><span>remote from India</span></div><div><b>{IndiaFreshers}</b><span>fresher & graduate roles</span></div></div></div></section>
