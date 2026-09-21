@@ -1,4 +1,5 @@
 name: Optimize RolePilot hero
+# v2
 
 on:
   push:
