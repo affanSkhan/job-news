@@ -107,6 +107,20 @@ jobs:
           echo "Timed out waiting for the direct-application deployment."
           exit 1
 
+      - name: Check progressive auth boundaries
+        run: |
+          set -euo pipefail
+
+          save_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/save-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__"}' "https://job-news-prod.onrender.com/api/saved-jobs")
+          test "$save_status" = "401"
+          grep -qi "unauthorized" /tmp/save-auth.json
+
+          application_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/application-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__","status":"applied"}' "https://job-news-prod.onrender.com/api/applications")
+          test "$application_status" = "401"
+          grep -qi "unauthorized" /tmp/application-auth.json
+
+          echo "Anonymous discovery remains open while account-backed actions return 401 for the client-side auth prompt."
+
       - name: Check Render health
         run: |
           set -euo pipefail
