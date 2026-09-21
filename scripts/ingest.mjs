@@ -57,7 +57,7 @@ for(const result of sourceResults){
   stats.push({id:src.id,ok,count,error});
 }
 function ensureFingerprint(j){const title=String(j?.title||"Opportunity"),company=String(j?.company||"Unknown company"),location=String(j?.location||"Remote"),fingerprint=stableFingerprint({title,company,location,applyUrl:j?.applyUrl||j?.sourceUrl});return{...j,id:String(j?.id||fingerprint),fingerprint,slug:String(j?.slug||(`${slug(title+"-"+company)}-${fingerprint}`))}}
-const normalized=[...byId.values()].map(ensureFingerprint),deduped=dedupeJobs(normalized),cutoff=Date.now()-60*24*60*60*1000,jobs=deduped.filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,5000);await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
+const normalized=[...byId.values()].map(ensureFingerprint),deduped=dedupeJobs(normalized),cutoff=Date.now()-60*24*60*60*1000,jobs=deduped.filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));await fs.writeFile(OUT,JSON.stringify(jobs,null,2)+"\n");
 let runId=null;
 if(db){
 await db.query("UPDATE public.ingest_runs SET status='failed',finished_at=now(),error='Superseded by a newer ingestion run' WHERE status='running' AND started_at < now()-interval '10 minutes'");
@@ -71,4 +71,4 @@ await db.query("UPDATE public.jobs SET search_document=to_tsvector('english',coa
 const links=jobs.map(j=>({job_id:j.id,source_id:SOURCES.find(s=>s.name===j.sourceName)?.id||j.sourceName,source_job_id:j.id,source_url:j.sourceUrl,last_seen_at:now,raw:j.raw||{}}));for(let i=0;i<links.length;i+=500){const chunk=links.slice(i,i+500),defs="job_id text,source_id text,source_job_id text,source_url text,last_seen_at timestamptz,raw jsonb",q="INSERT INTO public.job_sources(job_id,source_id,source_job_id,source_url,last_seen_at,raw) SELECT job_id,source_id,source_job_id,source_url,last_seen_at,raw FROM jsonb_to_recordset($1::jsonb) AS x("+defs+") ON CONFLICT(job_id,source_id) DO UPDATE SET source_job_id=EXCLUDED.source_job_id,source_url=EXCLUDED.source_url,last_seen_at=EXCLUDED.last_seen_at,raw=EXCLUDED.raw";await db.query(q,[JSON.stringify(chunk)])}
 for(const s of stats){await db.query("UPDATE public.sources SET last_success_at=$1,last_error=$2,last_count=$3,updated_at=now() WHERE id=$4",[s.ok?new Date().toISOString():null,s.ok?null:s.error,s.count,s.id])}
 if(runId)await db.query("UPDATE public.ingest_runs SET finished_at=now(),status=$1,sources_succeeded=$2,jobs_seen=$3,jobs_upserted=$4,metadata=$5::jsonb WHERE id=$6",[stats.some(s=>!s.ok)?"partial":"success",stats.filter(s=>s.ok).length,totalSeen,jobs.length,JSON.stringify({stats}),runId])}
-console.log("JobNews ingestion:",jobs.length,"active jobs across",SOURCES.length,"source definitions");
+console.log("RolePilot ingestion:",jobs.length,"active opportunities across",SOURCES.length,"source definitions");
