@@ -33,8 +33,7 @@ export default function AuthPage(){
         return;
       }
 
-      router.refresh();
-      router.push(next);
+      window.location.assign(next);
     }catch(error){
       setMsg(error instanceof Error?error.message:"Authentication failed. Please try again.");
     }finally{
