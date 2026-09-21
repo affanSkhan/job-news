@@ -6,8 +6,12 @@ export type CurrentUser={id:string;email?:string|null;name?:string|null};
 export async function getCurrentUser():Promise<CurrentUser|null>{
   try{
     const result:any=await auth.getSession();
-    return result?.data?.session?.user||result?.session?.user||result?.user||null;
-  }catch{
+    const session=result?.data?.session||result?.data||result?.session||null;
+    const user=session?.user||result?.user||result?.data?.user||null;
+    if(!user?.id)return null;
+    return {id:String(user.id),email:user.email??null,name:user.name??null};
+  }catch(error){
+    console.error("[auth] getCurrentUser failed",error);
     return null;
   }
 }
