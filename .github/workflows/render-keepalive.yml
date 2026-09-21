@@ -90,22 +90,21 @@ jobs:
             exit 1
           fi
 
-      - name: Wait for direct-application deployment
+      - name: Audit public RolePilot branding
         if: ${{ github.event_name != 'schedule' }}
         run: |
           set -euo pipefail
-          for i in $(seq 1 36); do
-            if curl --fail --silent --show-error --connect-timeout 10 --max-time 20 "https://job-news-prod.onrender.com/" > /tmp/deploy-home.html; then
-              if grep -q "RolePilot" /tmp/deploy-home.html && grep -q "Find the right role. Before the crowd." /tmp/deploy-home.html; then
-                echo "Direct-application deployment is live."
-                exit 0
-              fi
+          pages=(/ /jobs /india /internships /remote-jobs /companies /skills /locations /about /privacy /disclaimer)
+          for path in "${pages[@]}"; do
+            echo "Auditing $path"
+            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com$path" > /tmp/rolepilot-page.html
+            grep -q "RolePilot" /tmp/rolepilot-page.html
+            if grep -q "JobNews\|Job News" /tmp/rolepilot-page.html; then
+              echo "Legacy JobNews branding found on $path"
+              exit 1
             fi
-            echo "Waiting for the new deployment... attempt $i/36"
-            sleep 5
           done
-          echo "Timed out waiting for the direct-application deployment."
-          exit 1
+          echo "Public pages use RolePilot branding with no legacy JobNews title."
 
       - name: Check progressive auth boundaries
         run: |
