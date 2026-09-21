@@ -31,7 +31,7 @@ export default function Home(){
             <p className="hero-copy">Fresh jobs. Better matches. Straight to the real application.</p>
 
             <form className="search home-search" action="/jobs">
-              <input className="input" name="q" placeholder="Try “Python internship in Pune”" aria-label="Search jobs and internships"/>
+              <input className="input" name="q" placeholder="Try “fresher software internship in Pune”" aria-label="Search jobs and internships"/>
               <button className="btn" type="submit">Find roles</button>
             </form>
 
@@ -39,7 +39,7 @@ export default function Home(){
               <Link className="chip" href="/jobs?fresh=today">New today</Link>
               <Link className="chip" href="/jobs?mode=remote">Remote</Link>
               <Link className="chip" href="/jobs?type=internship">Internships</Link>
-              <Link className="chip" href="/jobs?india=1">🇮🇳 India</Link>
+              <Link className="chip" href="/jobs?india=1&experience=fresher">🇮🇳 India freshers</Link>
             </div>
           </div>
 
