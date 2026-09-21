@@ -1,7 +1,11 @@
+export const dynamic="force-dynamic";
+export const revalidate=0;
 import {NextResponse} from "next/server";
 import {requireAdmin} from "../../../../lib/admin";
 import {getDb} from "../../../../lib/db";
 export async function GET(){
+  const headersObj=new Headers();
+  headersObj.set("Cache-Control","private, no-store, max-age=0");
   const {user}=await requireAdmin();
   if(!user)return NextResponse.json({error:"forbidden"},{status:403});
   const sql=getDb();
