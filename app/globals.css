@@ -136,3 +136,22 @@ input,select,textarea{min-width:0}
   .file-drop{padding:20px 14px}
   .how-grid>div{padding:12px}
 }
+
+/* Progressive authentication */
+.auth-overlay{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:18px;background:rgba(3,8,13,.74);backdrop-filter:blur(12px)}
+.auth-modal{position:relative;width:min(100%,460px);max-height:min(92vh,720px);overflow:auto;padding:28px;border:1px solid #30414e;border-radius:24px;background:linear-gradient(180deg,#111d27 0,#0b151e 100%);box-shadow:0 30px 100px rgba(0,0,0,.45)}
+.auth-modal h2{margin:8px 0 10px;font-size:30px;line-height:1.05;letter-spacing:-.045em}
+.auth-modal>p{margin:0 0 18px;color:var(--muted);line-height:1.6}
+.auth-close{position:absolute;right:14px;top:12px;width:36px;height:36px;border:1px solid var(--line);border-radius:50%;background:var(--surface2);color:var(--ink);font-size:25px;line-height:1;cursor:pointer}
+.auth-form{display:grid;gap:10px}
+.auth-form .btn{width:100%}
+.auth-message{padding:10px 12px!important;margin:12px 0 0!important;border:1px solid rgba(255,107,107,.24);border-radius:12px;background:rgba(255,107,107,.08);color:#ffb2b2!important;font-size:13px}
+.auth-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--muted);font-size:13px}
+.auth-note{font-size:12px!important;margin:16px 0 0!important;padding-top:14px;border-top:1px solid var(--line)}
+@media(max-width:480px){
+  .auth-overlay{padding:10px}
+  .auth-modal{padding:22px 18px;border-radius:20px}
+  .auth-modal h2{font-size:26px}
+  .auth-switch{align-items:stretch}
+  .auth-switch .chip{width:100%;text-align:center}
+}
