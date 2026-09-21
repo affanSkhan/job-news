@@ -15,10 +15,35 @@ jobs:
       - name: Check Render homepage
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/" > /tmp/home.html
-          test -s /tmp/home.html
-          grep -q "Find the right role. Before the crowd." /tmp/home.html
-          grep -q "RolePilot" /tmp/home.html
+
+          check_home() {
+            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/" > /tmp/home.html
+            test -s /tmp/home.html
+            grep -q "Find the right role. Before the crowd." /tmp/home.html
+            grep -q "RolePilot" /tmp/home.html
+          }
+
+          if check_home; then
+            echo "RolePilot homepage is live."
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "Render is reachable but the new deployment is not live yet; polling for the RolePilot deployment."
+            for i in $(seq 1 36); do
+              if check_home; then
+                echo "RolePilot deployment is live."
+                break
+              fi
+              if [ "$i" -eq 36 ]; then
+                echo "Timed out waiting for the RolePilot homepage deployment."
+                exit 1
+              fi
+              echo "Waiting for the RolePilot deployment... attempt $i/36"
+              sleep 5
+            done
+          else
+            echo "Scheduled homepage check failed."
+            exit 1
+          fi
+
           wc -c /tmp/home.html
 
       - name: Wait for direct-application deployment
