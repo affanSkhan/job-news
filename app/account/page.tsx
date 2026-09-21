@@ -33,7 +33,7 @@ export default async function Account(){
     <main>
       <header className="nav">
         <div className="container navin">
-          <Link className="brand" href="/">Job<span>News</span></Link>
+          <Link className="brand" href="/">Role<span>Pilot</span></Link>
           <div className="links"><Link href="/jobs">Explore</Link><Link href="/india">🇮🇳 India</Link><Link href="/internships">Internships</Link><Link href="/remote-jobs">Remote</Link><SignOut/></div>
         </div>
       </header>
