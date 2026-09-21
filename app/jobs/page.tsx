@@ -76,7 +76,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
   return <>
     <header className="nav">
       <div className="container navin">
-        <Link href="/" className="brand">Job<span>News</span></Link>
+        <Link href="/" className="brand">Role<span>Pilot</span></Link>
         <nav className="links">
           <Link href="/jobs">Explore</Link>
           <Link href="/india">🇮🇳 India</Link>
