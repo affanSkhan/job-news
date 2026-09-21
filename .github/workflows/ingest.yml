@@ -64,11 +64,12 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-      - name: Publish cache only when it changed
+      - name: Publish dependency lock changes only
         run: |
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/jobs.json package-lock.json
-          if git diff --cached --quiet; then echo "No cache changes."; exit 0; fi
-          git commit -m "chore: refresh job cache [skip ci]"
+          git rm --cached -f data/jobs.json 2>/dev/null || true
+          git add -u package-lock.json data/jobs.json
+          if git diff --cached --quiet; then echo "No repository metadata changes."; exit 0; fi
+          git commit -m "chore: refresh repository metadata [skip ci]"
           git push
