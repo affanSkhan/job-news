@@ -1,0 +1,77 @@
+name: Optimize RolePilot hero
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png"
+      - ".github/workflows/optimize-hero.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install WebP tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y webp
+
+      - name: Create optimized hero
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="public/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png"
+          out="public/rolepilot-hero.webp"
+
+          test -f "$src"
+
+          # Keep enough resolution for desktop full-bleed rendering,
+          # while dramatically reducing transfer size.
+          cwebp -quiet -q 82 -resize 1920 0 "$src" -o "$out"
+
+          echo "Original:"
+          stat -c '%n %s bytes' "$src"
+          echo "Optimized:"
+          stat -c '%n %s bytes' "$out"
+
+          # Make sure the output is materially smaller.
+          original=$(stat -c '%s' "$src")
+          optimized=$(stat -c '%s' "$out")
+          test "$optimized" -lt "$original"
+
+      - name: Switch site to optimized asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("app/globals.css")
+          s=p.read_text()
+          s=s.replace(
+              'url("/rolepilot-hero.png?v=hero-4")',
+              'url("/rolepilot-hero.webp?v=hero-5")'
+          )
+          p.write_text(s)
+          PY
+
+      - name: Remove oversized source assets
+        run: |
+          rm -f "public/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png"
+          rm -f "public/rolepilot-hero.png"
+
+      - name: Commit optimized asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/globals.css public/rolepilot-hero.webp
+          git add -u public
+          git commit -m "perf: optimize hero asset [skip ci]"
+          git push origin HEAD:main
