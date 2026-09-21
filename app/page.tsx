@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Brand from "./components/brand";
 import LiveInventory from "./components/live-inventory";
 import ResumeUpload from "./components/resume-upload";
@@ -24,6 +25,7 @@ export default function Home(){
 
     <main>
       <section className="hero home-hero">
+        <Image className="home-hero-image" src="/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png" alt="" fill priority sizes="100vw" />
         <div className="container home-hero-inner">
           <div className="home-copy">
             <div className="eyebrow"><span className="pulse"><i/> Radar live</span></div>
