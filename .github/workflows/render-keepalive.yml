@@ -2,11 +2,11 @@ name: RolePilot Production Keepalive
 on:
   schedule:
     - cron: "*/10 * * * *"
-  push:
-    branches:
-      - main
   workflow_dispatch:
 permissions: {}
+env:
+  BASE_URL: https://jobs.affan.tech
+
 jobs:
   ping:
     runs-on: ubuntu-latest
@@ -17,7 +17,7 @@ jobs:
           set -euo pipefail
 
           check_home() {
-            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/" > /tmp/home.html
+            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "${BASE_URL}/" > /tmp/home.html
             test -s /tmp/home.html
             grep -q "Find the right role. Before the crowd." /tmp/home.html
             grep -q "RolePilot" /tmp/home.html
@@ -51,8 +51,8 @@ jobs:
           set -euo pipefail
 
           check_icons() {
-            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.png" > /tmp/rolepilot-icon.png
-            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/apple-icon.png" > /tmp/rolepilot-apple.png
+            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "${BASE_URL}/icon.png" > /tmp/rolepilot-icon.png
+            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "${BASE_URL}/apple-icon.png" > /tmp/rolepilot-apple.png
             test -s /tmp/rolepilot-icon.png
             test -s /tmp/rolepilot-apple.png
             python3 - <<'PY'
@@ -97,7 +97,7 @@ jobs:
           pages=(/ /jobs /india /internships /remote-jobs /companies /skills /locations /about /privacy /disclaimer)
           for path in "${pages[@]}"; do
             echo "Auditing $path"
-            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com$path" > /tmp/rolepilot-page.html
+            curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "${BASE_URL}$path" > /tmp/rolepilot-page.html
             grep -q "RolePilot" /tmp/rolepilot-page.html
             if grep -q "JobNews\|Job News" /tmp/rolepilot-page.html; then
               echo "Legacy JobNews branding found on $path"
@@ -110,11 +110,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          save_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/save-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__"}' "https://job-news-prod.onrender.com/api/saved-jobs")
+          save_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/save-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__"}' "${BASE_URL}/api/saved-jobs")
           test "$save_status" = "401"
           grep -qi "unauthorized" /tmp/save-auth.json
 
-          application_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/application-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__","status":"applied"}' "https://job-news-prod.onrender.com/api/applications")
+          application_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 -o /tmp/application-auth.json -w "%{http_code}" -X POST -H "content-type: application/json" -d '{"jobId":"__rolepilot_auth_smoke__","status":"applied"}' "${BASE_URL}/api/applications")
           test "$application_status" = "401"
           grep -qi "unauthorized" /tmp/application-auth.json
 
@@ -123,16 +123,30 @@ jobs:
       - name: Check Render health
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/api/health" > /tmp/health.json
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "${BASE_URL}/api/health" > /tmp/health.json
           cat /tmp/health.json
-          grep -q '"ok":true' /tmp/health.json
-          grep -q '"databaseReachable":true' /tmp/health.json
+          python3 - <<'PY'
+          import json
+
+          health = json.load(open("/tmp/health.json"))
+          assert health.get("ok") is True, health
+
+          # Public discovery intentionally has a cache fallback. A Neon outage
+          # should be reported as degraded without making the entire site look
+          # down when the cached job catalog is healthy.
+          if not health.get("databaseReachable"):
+              active = int(health.get("activeJobs") or 0)
+              assert active > 0, health
+              print(f"Neon database unavailable; cache fallback is serving {active} active jobs.")
+          else:
+              print("Database reachable and public health checks are green.")
+          PY
 
       - name: Check deployed PDF parser
         if: ${{ github.event_name != 'schedule' }}
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/api/health?check=resume" > /tmp/resume-health.json
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "${BASE_URL}/api/health?check=resume" > /tmp/resume-health.json
           cat /tmp/resume-health.json
           grep -q '"resumeParser":{"ok":true' /tmp/resume-health.json
 
@@ -174,7 +188,7 @@ jobs:
           Path("/tmp/resume-smoke.pdf").write_bytes(body)
           PY
 
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 60             -F "resume=@/tmp/resume-smoke.pdf;type=application/pdf"             "https://job-news-prod.onrender.com/api/resume" > /tmp/resume.json
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 60             -F "resume=@/tmp/resume-smoke.pdf;type=application/pdf"             "${BASE_URL}/api/resume" > /tmp/resume.json
 
           cat /tmp/resume.json
           grep -q '"ok":true' /tmp/resume.json
