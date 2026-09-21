@@ -12,7 +12,7 @@ export default function About(){
         <h2>What Radar does not claim</h2>
         <p>A match is not a promise of interview or hiring success. Job availability, salary, requirements and application status can change on the employer side. Users should review the employer page before applying.</p>
         <h2>SEO and content principle</h2>
-        <p>Public job pages prioritize source attribution, freshness, canonical URLs and useful original JobNews context instead of mass-producing thin duplicate pages.</p>
+        <p>Public job pages prioritize source attribution, freshness, canonical URLs and useful original RolePilot context instead of mass-producing thin duplicate pages.</p>
       </div>
     </main>
   );
