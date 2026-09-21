@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import Link from "next/link";
 export default function Admin(){
   const [d,setD]=useState<any>(null),[msg,setMsg]=useState("");
-  async function load(){const r=await fetch("/api/admin/overview");if(r.status===403){setMsg("Admin access required.");return}setD(await r.json())}
+  async function load(){const r=await fetch("/api/admin/overview",{cache:"no-store",headers:{"cache-control":"no-cache"}});if(r.status===403){setMsg("Admin access required.");return}setD(await r.json())}
   useEffect(()=>{load()},[]);
   async function toggle(id:string,enabled:boolean){await fetch("/api/admin/sources",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id,enabled})});load()}
   async function remove(id:string){await fetch("/api/admin/jobs/"+id,{method:"DELETE"});load()}
