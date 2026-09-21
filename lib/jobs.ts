@@ -18,4 +18,4 @@ export async function getJobAsync(slug:string){const sql=getDb();if(!sql)return 
 export function getJobs():Job[]{return []}
 export function getActiveJobs():Job[]{return []}
 export function getJob(slug:string):Job|undefined{return undefined}
-export function titleFor(j:Job){return j.title+" at "+j.company+" — JobNews"}export function descFor(j:Job){return "Find "+[j.title,"at "+j.company,j.location,j.type,j.salary,j.skills.slice(0,5).join(", ")].filter(Boolean).join(" · ")+". View source details and apply directly through the original employer or job source."}export function companySlug(name:string){return slugify(name)}
+export function titleFor(j:Job){return j.title+" at "+j.company+" — RolePilot"}export function descFor(j:Job){return "Find "+[j.title,"at "+j.company,j.location,j.type,j.salary,j.skills.slice(0,5).join(", ")].filter(Boolean).join(" · ")+". View source details and apply directly through the original employer or job source."}export function companySlug(name:string){return slugify(name)}
