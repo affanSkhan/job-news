@@ -1,6 +1,6 @@
-# JobNews database setup
+# RolePilot database setup
 
-Apply supabase/migrations/20260920000000_jobnews_core.sql to a dedicated Supabase project.
+Apply supabase/migrations/20260920000000_rolepilot_core.sql to a dedicated Supabase project.
 
 Runtime: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
 Workers: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
