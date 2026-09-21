@@ -155,3 +155,6 @@ input,select,textarea{min-width:0}
   .auth-switch{align-items:stretch}
   .auth-switch .chip{width:100%;text-align:center}
 }
+
+.auth-page-note{display:grid;gap:4px;margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#0c151e;color:var(--muted);font-size:12px;line-height:1.5}
+.auth-page-note b{color:var(--ink)}
