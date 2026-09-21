@@ -229,11 +229,17 @@ input,select,textarea{min-width:0}
 /* Cinematic RolePilot hero */
 .home-hero{position:relative;isolation:isolate;min-height:560px;overflow:hidden;background:#071018}
 .home-hero::before{
-  content:"";position:absolute;inset:-4%;z-index:-3;
-  background:url("/ChatGPT%20Image%20Sep%2021,%202026,%2011_39_49%20PM.png") center 46%/cover no-repeat;
+  content:"";position:absolute;inset:-4%;z-index:-3;pointer-events:none;
+  background:#071018;
+  opacity:0;
+}
+.home-hero-image{
+  position:absolute!important;inset:-4%!important;width:108%!important;height:108%!important;
+  z-index:-3!important;object-fit:cover;object-position:48% 46%;
   opacity:.72;filter:saturate(.88) contrast(1.02) brightness(.88);
   transform:scale(1.035);transform-origin:center;
   animation:home-scene-drift 30s ease-in-out infinite alternate;
+}
 }
 .home-hero::after{
   content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;
@@ -270,12 +276,12 @@ input,select,textarea{min-width:0}
 }
 .live-inventory{position:relative;z-index:1}
 @keyframes home-scene-drift{
-  0%{transform:scale(1.035) translate3d(-.4%,0,0);background-position:48% 46%}
-  100%{transform:scale(1.07) translate3d(.7%,-.5%,0);background-position:52% 44%}
+  0%{transform:scale(1.035) translate3d(-.4%,0,0)}
+  100%{transform:scale(1.07) translate3d(.7%,-.5%,0)}
 }
 @media(max-width:760px){
   .home-hero{min-height:0}
-  .home-hero::before{opacity:.50;background-position:68% 46%;animation-duration:36s}
+  .home-hero-image{opacity:.50;object-position:68% 46%;animation-duration:36s}
   .home-hero::after{
     background:
       radial-gradient(circle at 90% 16%,rgba(73,128,255,.10),transparent 32%),
@@ -284,5 +290,5 @@ input,select,textarea{min-width:0}
   .home-radar-panel{background:rgba(10,21,31,.82)}
 }
 @media(prefers-reduced-motion:reduce){
-  .home-hero::before{animation:none}
+  .home-hero-image{animation:none}
 }
