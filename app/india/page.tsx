@@ -1,3 +1,5 @@
+import type {Metadata} from "next";
+import {SITE_URL} from "../../lib/site";
 import Link from "next/link";
 import {getActiveJobsAsync,dedupeJobs} from "../../lib/jobs";
 import {isDirectApplication} from "../../lib/application";
@@ -15,6 +17,7 @@ const CITY_TERMS={
   "Indore / Nagpur":/indore|nagpur/i
 };
 export const dynamic="force-dynamic";
+export const metadata:Metadata={title:"Jobs & Internships in India | RolePilot",description:"Browse current India jobs and internships across Pune, Bengaluru, Hyderabad, Mumbai and other major hiring hubs.",alternates:{canonical:"/india"}};
 export default async function India(){
  const jobs=dedupeJobs(await getActiveJobsAsync()).filter(j=>isDirectApplication(j.applyUrl,j.company)&&Object.values(CITY_TERMS).some(re=>re.test(j.location)||(/india/i.test(j.location)&&j.workMode==="remote")));
  const counts=Object.entries(CITY_TERMS).map(([name,re])=>({name,count:jobs.filter(j=>re.test(j.location)).length})).sort((a,b)=>b.count-a.count);
