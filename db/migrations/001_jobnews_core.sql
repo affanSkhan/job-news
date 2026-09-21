@@ -26,8 +26,6 @@ CREATE TABLE IF NOT EXISTS public.jobs (
 );
 CREATE INDEX IF NOT EXISTS jobs_status_published_idx ON public.jobs(status,published_at DESC);
 CREATE INDEX IF NOT EXISTS jobs_company_idx ON public.jobs(company_id);
-CREATE INDEX IF NOT EXISTS jobs_search_idx ON public.jobs USING gin(search_document);
-CREATE INDEX IF NOT EXISTS jobs_embedding_idx ON public.jobs USING hnsw(embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS public.job_sources (
   job_id text NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,source_id text NOT NULL REFERENCES public.sources(id) ON DELETE CASCADE,
