@@ -20,6 +20,22 @@ jobs:
         with: {fetch-depth: 1}
       - uses: actions/setup-node@v4
         with: {node-version: 20, cache: npm}
+
+      - name: Create stable hero asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "public/rolepilot-hero.png" ]; then
+            echo "Stable hero asset already exists."
+            exit 0
+          fi
+          test -f "public/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png"
+          cp "public/ChatGPT Image Sep 21, 2026, 11_39_49 PM.png" "public/rolepilot-hero.png"
+          git config user.name "RolePilot Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "public/rolepilot-hero.png"
+          git commit -m "chore: add stable hero asset [skip ci]"
+          git push
       - run: npm install --no-audit --no-fund
       - name: Validate ingest script syntax
         run: node --check scripts/ingest.mjs
