@@ -4,8 +4,6 @@ import {NextResponse} from "next/server";
 import {requireAdmin} from "../../../../lib/admin";
 import {getDb} from "../../../../lib/db";
 export async function GET(){
-  const headersObj=new Headers();
-  headersObj.set("Cache-Control","private, no-store, max-age=0");
   const {user}=await requireAdmin();
   if(!user)return NextResponse.json({error:"forbidden"},{status:403});
   const sql=getDb();
@@ -25,5 +23,5 @@ export async function GET(){
     sql.query("SELECT event_name,count(*)::int AS count FROM public.analytics_events WHERE created_at >= now()-interval '7 days' GROUP BY event_name ORDER BY count DESC,event_name",[])
   ]);
   const ga=process.env.NEXT_PUBLIC_GA_ID||"",ads=process.env.NEXT_PUBLIC_ADSENSE_ID||"";
-  return NextResponse.json({jobs:jobs?.count||0,companies:companies?.count||0,sources:sources?.count||0,runs,sourceRows,recentJobs,aiJobs:aiJobs?.count||0,aiConfigured:Boolean(process.env.HF_TOKEN||process.env.OPENAI_API_KEY),embeddingConfigured:Boolean(process.env.OPENAI_API_KEY),analyticsConfigured:Boolean(ga),analyticsValid:/^G-[A-Z0-9]+$/i.test(ga),adsenseConfigured:Boolean(ads),adsenseValid:/^ca-pub-[0-9]+$/i.test(ads),analytics24:analytics24?.count||0,analytics7:analytics7?.count||0,sessions7:sessions7?.count||0,topPages,eventCounts});
+  return NextResponse.json({jobs:jobs?.count||0,companies:companies?.count||0,sources:sources?.count||0,runs,sourceRows,recentJobs,aiJobs:aiJobs?.count||0,aiConfigured:Boolean(process.env.HF_TOKEN||process.env.OPENAI_API_KEY),embeddingConfigured:Boolean(process.env.OPENAI_API_KEY),analyticsConfigured:Boolean(ga),analyticsValid:/^G-[A-Z0-9]+$/i.test(ga),adsenseConfigured:Boolean(ads),adsenseValid:/^ca-pub-[0-9]+$/i.test(ads),analytics24:analytics24?.count||0,analytics7:analytics7?.count||0,sessions7:sessions7?.count||0,topPages,eventCounts},{headers:{"Cache-Control":"private, no-store, max-age=0"}});
 }
