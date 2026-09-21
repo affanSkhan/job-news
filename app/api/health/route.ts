@@ -1,3 +1,4 @@
+export const dynamic="force-dynamic";
 import {NextResponse} from "next/server";
 import {getDb} from "../../../lib/db";
 
@@ -54,5 +55,5 @@ export async function GET(req:Request){
       result.resumeParser={ok:false,error:error instanceof Error?error.message:String(error)};
     }
   }
-  return NextResponse.json(result,{status:result.ok?200:503});
+  return NextResponse.json(result,{status:result.ok?200:503,headers:{"Cache-Control":"no-store, max-age=0, must-revalidate"}});
 }
