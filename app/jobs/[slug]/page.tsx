@@ -49,23 +49,25 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
   const direct=isDirectApplication(j.applyUrl,j.company);
   const updatedLabel=j.updatedAt?new Date(j.updatedAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"Not available";
   const country=countryFor(j.location);
-  const locationBlock=j.workMode==="remote"
-    ? (country?{
-        "jobLocationType":"TELECOMMUTE",
-        "applicantLocationRequirements":{"@type":"Country","name":country}
-      }:{"jobLocationType":"TELECOMMUTE"})
-    : {
-        "jobLocation":{
-          "@type":"Place",
-          "address":{
-            "@type":"PostalAddress",
-            "addressLocality":j.location,
-            ...(country?{"addressCountry":country}: {})
+  const locationBlock=country
+    ? j.workMode==="remote"
+      ? {
+          "jobLocationType":"TELECOMMUTE",
+          "applicantLocationRequirements":{"@type":"Country","name":country}
+        }
+      : {
+          "jobLocation":{
+            "@type":"Place",
+            "address":{
+              "@type":"PostalAddress",
+              "addressLocality":j.location,
+              "addressCountry":country
+            }
           }
         }
-      };
+    : null;
 
-  const jobSchema:any={
+  const jobSchema:any=locationBlock?{
     "@context":"https://schema.org",
     "@type":"JobPosting",
     "title":j.title,
@@ -117,7 +119,7 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
       </nav>
 
       <article className="job-shell">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jobSchema)}}/>
+        {jobSchema&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jobSchema)}}/>}
         <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(breadcrumbSchema)}}/>
 
         <div className="job-topline">
