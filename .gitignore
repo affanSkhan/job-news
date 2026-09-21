@@ -1,0 +1,6 @@
+# Runtime-generated opportunity snapshots
+data/jobs.json
+data/web-discovered-jobs.json
+
+# Next.js
+.next/
