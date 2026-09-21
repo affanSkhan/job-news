@@ -66,5 +66,7 @@ for(const query of queries){
   }catch(e){console.error("web discovery query failed",e&&e.message||String(e))}
 }
 const dedup=new Map(found.map(function(j){return [j.id,j]}));
-const india=Array.from(dedup.values()).filter(function(j){return /india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i.test(String(j.location||""))});\nconst global=Array.from(dedup.values()).filter(function(j){return !india.includes(j)});\nawait fs.writeFile(out,JSON.stringify(india.slice(0,90).concat(global.slice(0,30)),null,2)+"\n");
+const india=Array.from(dedup.values()).filter(function(j){return /india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i.test(String(j.location||""))});
+const global=Array.from(dedup.values()).filter(function(j){return !india.includes(j)});
+await fs.writeFile(out,JSON.stringify(india.slice(0,90).concat(global.slice(0,30)),null,2)+"\n");
 console.log("AI web discovery found "+dedup.size+" validated employer/ATS opportunities.");
