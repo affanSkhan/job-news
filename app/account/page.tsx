@@ -1,4 +1,5 @@
 import {redirect} from "next/navigation";
+import Brand from "../components/brand";
 import Link from "next/link";
 import {getCurrentUser,ensureProfile} from "../../lib/current-user";
 import {getDb} from "../../lib/db";
@@ -33,7 +34,7 @@ export default async function Account(){
     <main>
       <header className="nav">
         <div className="container navin">
-          <Link className="brand" href="/">Role<span>Pilot</span></Link>
+          <Brand/>
           <div className="links"><Link href="/jobs">Explore</Link><Link href="/india">🇮🇳 India</Link><Link href="/internships">Internships</Link><Link href="/remote-jobs">Remote</Link><SignOut/></div>
         </div>
       </header>
