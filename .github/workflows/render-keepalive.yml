@@ -49,10 +49,22 @@ jobs:
       - name: Check RolePilot icon
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.svg" > /tmp/rolepilot-icon.svg
-          test -s /tmp/rolepilot-icon.svg
-          grep -q "RolePilot" /tmp/rolepilot-icon.svg
-          grep -q "viewBox=\"0 0 64 64\"" /tmp/rolepilot-icon.svg
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.png" > /tmp/rolepilot-icon.png
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/apple-icon.png" > /tmp/rolepilot-apple.png
+          test -s /tmp/rolepilot-icon.png
+          test -s /tmp/rolepilot-apple.png
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          expected = {"/tmp/rolepilot-icon.png": (192, 192), "/tmp/rolepilot-apple.png": (180, 180)}
+          for filename, size in expected.items():
+              data = Path(filename).read_bytes()
+              assert data.startswith(b"\x89PNG\r\n\x1a\n"), filename
+              width, height = struct.unpack(">II", data[16:24])
+              assert (width, height) == size, (filename, (width, height))
+              print(f"{filename}: valid {width}x{height} PNG")
+          PY
 
       - name: Wait for direct-application deployment
         if: ${{ github.event_name != 'schedule' }}
