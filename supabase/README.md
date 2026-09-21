@@ -1,11 +1,25 @@
-# RolePilot database setup
+# Database integration notes
 
-Apply supabase/migrations/20260920000000_rolepilot_core.sql to a dedicated Supabase project.
+This directory contains Supabase client/service helpers retained for compatibility with parts of the project.
 
-Runtime: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
-Workers: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
-Admin: ADMIN_EMAILS as a comma-separated trusted email allow-list.
-AI: HF_TOKEN/HF_MODEL or OPENAI_API_KEY/OPENAI_CHAT_MODEL plus OPENAI_EMBEDDING_MODEL.
-Alerts: RESEND_API_KEY and ALERT_FROM_EMAIL.
+The current primary production data/auth path uses **PostgreSQL on Neon and Neon Auth**. See the root README and .env.example for the active runtime configuration.
 
-The application keeps a JSON fallback so the public site remains buildable before production database credentials are present.
+## Current production data path
+
+- Job data: PostgreSQL / Neon
+- Authentication: Neon Auth
+- Public discovery fallback: data/public-jobs.json
+- Semantic search: database vector search with full-text/fallback paths
+
+Do not treat this file as a substitute for the current production schema documentation.
+
+## Secrets
+
+Never commit:
+
+- SUPABASE_SERVICE_ROLE_KEY
+- DATABASE_URL
+- Neon auth secrets
+- other provider credentials
+
+Use local .env.local values or deployment secrets instead.
