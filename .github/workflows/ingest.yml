@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/ingest.yml",".github/workflows/render-keepalive.yml","package.json","package-lock.json","scripts/**","lib/**","app/api/**","app/components/**","app/page.tsx","app/jobs/**","app/account/**","data/sources.json","data/ats-sources.json","db/migrations/**"]
+    paths: [".github/workflows/ingest.yml",".github/workflows/render-keepalive.yml","package.json","package-lock.json","scripts/**","lib/**","app/**","data/**","db/migrations/**"]
   schedule:
     - cron: "*/30 * * * *"
 permissions:
