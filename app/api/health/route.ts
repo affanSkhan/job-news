@@ -1,5 +1,8 @@
 export const dynamic="force-dynamic";
 import {NextResponse} from "next/server";
+import fs from "node:fs";
+import path from "node:path";
+import {getActiveJobStatsAsync} from "../../../lib/jobs";
 import {getDb} from "../../../lib/db";
 
 function smokePdf(){
@@ -44,6 +47,14 @@ export async function GET(req:Request){
     }catch{}
   }
 
+  if(!databaseReachable){
+    try{
+      const stats=await getActiveJobStatsAsync();
+      activeJobs=stats.active;
+      const meta=JSON.parse(fs.readFileSync(path.join(process.cwd(),"data","public-jobs-meta.json"),"utf8"));
+      lastRun={started_at:meta.generatedAt,status:"cache",jobs_upserted:meta.count};
+    }catch{}
+  }
   const result:any={ok:true,service:"rolepilot",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
   if(new URL(req.url).searchParams.get("check")==="resume"){
     try{
