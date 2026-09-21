@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 
-type Health={activeJobs:number;enabledSources:number;databaseReachable:boolean;lastRun?:{started_at?:string;status?:string;jobs_upserted?:number}|null};
+type Health={activeJobs:number;lastRun?:{started_at?:string}|null};
 
 export default function LiveInventory(){
   const [health,setHealth]=useState<Health|null>(null);
@@ -10,8 +10,7 @@ export default function LiveInventory(){
     try{
       const r=await fetch("/api/health",{cache:"no-store",headers:{"cache-control":"no-cache"}});
       if(!r.ok)return;
-      const x=await r.json();
-      setHealth(x);
+      setHealth(await r.json());
     }catch{}
   },[]);
 
@@ -23,14 +22,16 @@ export default function LiveInventory(){
     return()=>{mounted=false;window.clearInterval(timer)};
   },[refresh]);
 
-  if(!health)return <p>Loading current inventory…</p>;
+  if(!health)return <div className="live-inventory"><strong>Live</strong><span>Checking the radar…</span></div>;
 
   const lastRun=health.lastRun?.started_at?new Date(health.lastRun.started_at):null;
-  const lastRunLabel=lastRun&&Number.isFinite(lastRun.getTime())
-    ? `Last scan ${lastRun.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}`
-    : "Live inventory";
+  const label=lastRun&&Number.isFinite(lastRun.getTime())
+    ?"Updated "+lastRun.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})
+    :"Updating live";
 
-  return <p>
-    <strong>{health.activeJobs.toLocaleString()}</strong> active opportunities · {health.enabledSources} enabled sources · {health.databaseReachable?"database healthy":"database reconnecting"} · {lastRunLabel} · auto-refreshing
-  </p>;
+  return <div className="live-inventory">
+    <strong>{health.activeJobs.toLocaleString()}</strong>
+    <span>fresh opportunities</span>
+    <small>{label} · refreshes automatically</small>
+  </div>;
 }

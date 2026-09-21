@@ -32,31 +32,37 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
     finally{setBusy(false)}
   }
 
-  return <div className="card soft">
-    <div className="eyebrow">Build your radar</div>
-    <h2>{hasResume&&!deleted?"Resume radar profile":"Upload your resume"}</h2>
-    <p>Upload once and get direct employer / ATS opportunities immediately. No sign-in is required to scan your resume. Third-party job boards are kept out of the primary match results.</p>
-    <div className="file-drop">
-      <input ref={inputRef} hidden type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={e=>{const f=e.target.files?.[0];if(f)upload(f)}}/>
-      <button className="btn" type="button" disabled={busy} onClick={()=>inputRef.current?.click()}>{busy?"Scanning resume…":"Upload resume"}</button>
-      <div className="hint" style={{marginTop:10}}>Maximum 5 MB · PDF, DOCX or TXT · no account required</div>
+  return <div className="card soft resume-card">
+    <div className="resume-card-copy">
+      <div className="eyebrow">Resume match</div>
+      <h3>{hasResume&&!deleted?"Your resume is ready":"Match me with better jobs"}</h3>
+      <p>Upload once. Get relevant direct-employer roles without creating an account.</p>
     </div>
-    {hasResume&&!deleted&&<button className="chip" type="button" disabled={busy} onClick={removeResume} style={{marginTop:10}}>Delete stored resume profile</button>}
+
+    <div className="file-drop resume-drop">
+      <input ref={inputRef} hidden type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={e=>{const f=e.target.files?.[0];if(f)upload(f)}}/>
+      <button className="btn" type="button" disabled={busy} onClick={()=>inputRef.current?.click()}>{busy?"Scanning…":"Upload resume"}</button>
+      <div className="hint">PDF, DOCX or TXT · max 5 MB</div>
+    </div>
+
+    {hasResume&&!deleted&&<button className="chip" type="button" disabled={busy} onClick={removeResume}>Delete saved resume profile</button>}
     {error&&<p className="badge warn" style={{marginTop:12}}>{error}</p>}
-    {deleted&&<div className="reason" style={{marginTop:14}}><b>Resume profile deleted.</b><br/>Upload another resume whenever you want Radar to rebuild it.</div>}
-    {result&&<div style={{marginTop:20}}>
-      <div className="reason"><b>Radar scan complete.</b><br/>{result.headline||"Candidate profile detected"} · {result.skills?.length||0} skills · {result.roles?.length||0} role signals{result.profileStored?" · saved to your Radar":""}.</div>
-      <h3 style={{marginTop:20}}>Direct employer opportunities matched to this resume</h3>
-      {!result.items?.length?<p>No close matches were found in the current live index. Try a broader resume or browse the full opportunity index.</p>:
-      <div className="grid">{result.items.slice(0,8).map((j:any)=><article className="card job-card" key={j.job_id}>
-        <div className="eyebrow">Direct match {(Number(j.score||0)*100).toFixed(0)}%</div>
-        <h4 className="title"><Link href={"/jobs/"+j.slug}>{j.title}</Link></h4>
-        <div className="company">{j.company_name}</div>
-        <div className="meta"><span className="badge">{j.location}</span><span className="badge">{j.work_mode}</span>{j.verified&&<span className="badge good">Source verified</span>}{j.direct_application&&<span className="badge good">Employer application</span>}</div>
-        <div className="reason"><b>Why it matched:</b> {j.reason}</div>
-        {!!j.matched_skills?.length&&<p className="score">Matched: {j.matched_skills.join(" · ")}</p>}
-        <div className="apply"><span className="direct">↗ Employer / ATS</span><a href={j.apply_url||"/jobs/"+j.slug} target="_blank" rel="noopener noreferrer">Apply →</a></div>
-      </article>)}</div>}
+    {deleted&&<div className="reason resume-result"><b>Done.</b> Your saved resume profile is gone.</div>}
+
+    {result&&<div className="resume-result">
+      <div className="reason"><b>Radar ready.</b> {result.skills?.length||0} skills · {result.roles?.length||0} role signals{result.profileStored?" · saved to your account":""}.</div>
+      {!result.items?.length?<p>No close matches yet. Try again later or explore all roles.</p>:
+      <div>
+        <h4 className="resume-results-title">Good matches</h4>
+        <div className="grid">{result.items.slice(0,6).map((j:any)=><article className="card job-card" key={j.job_id}>
+          <div className="eyebrow">Match {(Number(j.score||0)*100).toFixed(0)}%</div>
+          <h4 className="title"><Link href={"/jobs/"+j.slug}>{j.title}</Link></h4>
+          <div className="company">{j.company_name}</div>
+          <div className="meta"><span className="badge">{j.location}</span>{j.direct_application&&<span className="badge good">Employer application</span>}</div>
+          <div className="reason"><b>Why:</b> {j.reason}</div>
+          <div className="apply"><span className="direct">↗ Employer / ATS</span><a href={j.apply_url||"/jobs/"+j.slug} target="_blank" rel="noopener noreferrer">Apply →</a></div>
+        </article>)}</div>
+      </div>}
     </div>}
   </div>
 }
