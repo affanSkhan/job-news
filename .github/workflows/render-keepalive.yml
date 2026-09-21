@@ -46,6 +46,14 @@ jobs:
 
           wc -c /tmp/home.html
 
+      - name: Check RolePilot icon
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.svg" > /tmp/rolepilot-icon.svg
+          test -s /tmp/rolepilot-icon.svg
+          grep -q "RolePilot" /tmp/rolepilot-icon.svg
+          grep -q "viewBox=\"0 0 64 64\"" /tmp/rolepilot-icon.svg
+
       - name: Wait for direct-application deployment
         if: ${{ github.event_name != 'schedule' }}
         run: |
