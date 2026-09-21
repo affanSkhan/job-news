@@ -2,6 +2,7 @@ import Link from "next/link";
 import Brand from "./components/brand";
 import LiveInventory from "./components/live-inventory";
 import ResumeUpload from "./components/resume-upload";
+import {SITE_NAME,SITE_URL} from "../lib/site";
 
 export const dynamic="force-static";
 export const revalidate=3600;
@@ -23,6 +24,26 @@ export default function Home(){
     </header>
 
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify({
+        "@context":"https://schema.org",
+        "@graph":[
+          {
+            "@type":"Organization",
+            "@id":SITE_URL+"#organization",
+            "name":SITE_NAME,
+            "url":SITE_URL,
+            "logo":SITE_URL+"/icon.png",
+            "description":"Job discovery platform for fresh jobs, internships, remote roles and direct employer opportunities."
+          },
+          {
+            "@type":"WebSite",
+            "@id":SITE_URL+"#website",
+            "name":SITE_NAME,
+            "url":SITE_URL,
+            "publisher":{"@id":SITE_URL+"#organization"}
+          }
+        ]
+      })}}/>
       <section className="hero home-hero">
         <div className="home-hero-art" aria-hidden="true" />
         <div className="container home-hero-inner">
