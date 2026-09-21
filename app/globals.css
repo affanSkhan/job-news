@@ -240,7 +240,6 @@ input,select,textarea{min-width:0}
   transform:scale(1.035);transform-origin:center;
   animation:home-scene-drift 30s ease-in-out infinite alternate;
 }
-}
 .home-hero::after{
   content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;
   background:
