@@ -86,7 +86,7 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
     },
     "url":pageUrl,
     ...locationBlock
-  };
+  }:null;
 
   const breadcrumbSchema={
     "@context":"https://schema.org",
