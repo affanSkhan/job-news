@@ -1,18 +1,18 @@
-# JobNews Radar
+# RolePilot
 
-AI-assisted job intelligence built around a simple idea: **stop searching, let your radar search for you.**
+AI-powered job discovery and matching built around a simple idea: **find the right role before the crowd.**
 
 ## Product
 - Resume-first candidate profiling for PDF, DOCX and TXT resumes
 - Personalized job matching with semantic, skill, keyword, preference and freshness signals
 - Explainable matches showing matched skills and potential gaps
-- Employer / employer-ATS application path detection
+- Employer / ATS application path detection
 - Source verification, freshness and deduplication
 - Natural-language semantic job search
 - Live AI web discovery plus curated ATS/feed ingestion
 - Application tracker, saved jobs and alerts
 - SEO-first canonical job pages with JobPosting structured data
-- Dark “signal/radar” brand designed around relevance instead of job volume
+- Signal-first visual language designed around relevance instead of job volume
 
 ## Automation
 The intelligence pipeline runs every 30 minutes:
