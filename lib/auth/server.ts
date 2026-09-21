@@ -9,6 +9,6 @@ if(!secret)console.warn("NEON_AUTH_COOKIE_SECRET is not configured; Neon Auth se
 export const auth=createNeonAuth({
   baseUrl:baseUrl||"http://localhost:3000/auth",
   cookies:{
-    secret:secret||"jobnews-development-secret-please-configure-32chars"
+    secret:secret||"rolepilot-development-secret-please-configure-32chars"
   }
 });
