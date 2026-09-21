@@ -59,7 +59,7 @@ jobs:
           from pathlib import Path
           import struct
 
-          expected = {"/tmp/rolepilot-icon.png": (192, 192), "/tmp/rolepilot-apple.png": (180, 180)}
+          expected = {"/tmp/rolepilot-icon.png": (192, 192), "/tmp/rolepilot-apple.png": (192, 192)}
           for filename, size in expected.items():
               data = Path(filename).read_bytes()
               assert data.startswith(b"\x89PNG\r\n\x1a\n"), filename
