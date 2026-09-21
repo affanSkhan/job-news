@@ -520,5 +520,35 @@
     "url": "https://boards-api.greenhouse.io/v1/boards/berkadia/jobs",
     "enabled": true,
     "maxJobs": 250
+  },
+  {
+    "id": "career-vestval",
+    "name": "Vestval Careers · India",
+    "kind": "career_html",
+    "url": "https://www.vestval.com/careers",
+    "pathToken": "/careers/",
+    "company": "Vestval",
+    "enabled": true,
+    "maxJobs": 40
+  },
+  {
+    "id": "career-berkadia-india",
+    "name": "Berkadia India Careers",
+    "kind": "career_html",
+    "url": "https://www.berkadia.com/careers/commercial-real-estate-jobs-india/",
+    "pathToken": "/careers/commercial-real-estate-jobs-india/",
+    "company": "Berkadia",
+    "enabled": true,
+    "maxJobs": 40
+  },
+  {
+    "id": "career-radical-india",
+    "name": "Radical Technologies Careers · India",
+    "kind": "career_html",
+    "url": "https://www.radicaltechnologies.co.in/careers/",
+    "pathToken": "/careers/",
+    "company": "Radical Technologies",
+    "enabled": true,
+    "maxJobs": 40
   }
 ]
