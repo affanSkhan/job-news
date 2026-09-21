@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Brand from "../components/brand";
 import type {Metadata} from "next";
 import {getActiveJobsAsync,type Job,dedupeJobs} from "../../lib/jobs";
 import {semanticSearch} from "../../lib/search";
@@ -76,7 +77,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
   return <>
     <header className="nav">
       <div className="container navin">
-        <Link href="/" className="brand">Role<span>Pilot</span></Link>
+        <Brand/>
         <nav className="links">
           <Link href="/jobs">Explore</Link>
           <Link href="/india">🇮🇳 India</Link>
