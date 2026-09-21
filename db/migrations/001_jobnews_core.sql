@@ -1,4 +1,4 @@
--- JobNews Neon schema. Neon Auth owns users/sessions in neon_auth; application data lives in public.
+-- RolePilot Neon schema. Neon Auth owns users/sessions in neon_auth; application data lives in public.
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
