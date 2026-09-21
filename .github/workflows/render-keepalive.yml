@@ -1,4 +1,4 @@
-name: Render Keepalive
+name: RolePilot Production Keepalive
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -17,7 +17,7 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-max-time 180 --retry-all-errors --connect-timeout 10 --max-time 45 "https://job-news-prod.onrender.com/" > /tmp/home.html
           test -s /tmp/home.html
-          grep -q "Your job search has a radar now" /tmp/home.html
+          grep -q "Find the right role. Before the crowd." /tmp/home.html
           grep -q "RolePilot" /tmp/home.html
           wc -c /tmp/home.html
 
@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           for i in $(seq 1 36); do
             if curl --fail --silent --show-error --connect-timeout 10 --max-time 20 "https://job-news-prod.onrender.com/" > /tmp/deploy-home.html; then
-              if grep -q "direct employer / ATS opportunities immediately" /tmp/deploy-home.html; then
+              if grep -q "RolePilot" /tmp/deploy-home.html && grep -q "Find the right role. Before the crowd." /tmp/deploy-home.html; then
                 echo "Direct-application deployment is live."
                 exit 0
               fi
