@@ -35,7 +35,7 @@ export default function AuthPage(){
   return (
     <main className="container section" style={{maxWidth:620}}>
       <div className="card">
-        <div className="eyebrow">JobNews account</div>
+        <div className="eyebrow">RolePilot account</div>
         <h1>{mode==="in"?"Sign in":"Create your account"}</h1>
         <p>Save jobs, track applications, build a profile, and receive intelligent alerts.</p>
         <form onSubmit={submit} style={{display:"grid",gap:10}}>
