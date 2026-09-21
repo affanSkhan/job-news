@@ -49,11 +49,13 @@ jobs:
       - name: Check RolePilot icon
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.png" > /tmp/rolepilot-icon.png
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/apple-icon.png" > /tmp/rolepilot-apple.png
-          test -s /tmp/rolepilot-icon.png
-          test -s /tmp/rolepilot-apple.png
-          python3 - <<'PY'
+
+          check_icons() {
+            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/icon.png" > /tmp/rolepilot-icon.png
+            curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "https://job-news-prod.onrender.com/apple-icon.png" > /tmp/rolepilot-apple.png
+            test -s /tmp/rolepilot-icon.png
+            test -s /tmp/rolepilot-apple.png
+            python3 - <<'PY'
           from pathlib import Path
           import struct
 
@@ -65,6 +67,28 @@ jobs:
               assert (width, height) == size, (filename, (width, height))
               print(f"{filename}: valid {width}x{height} PNG")
           PY
+          }
+
+          if check_icons; then
+            echo "RolePilot icons are live."
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "The new Render deployment is not serving the icon assets yet; polling for the asset rollout."
+            for i in $(seq 1 36); do
+              if check_icons; then
+                echo "RolePilot icon deployment is live."
+                break
+              fi
+              if [ "$i" -eq 36 ]; then
+                echo "Timed out waiting for the RolePilot icon deployment."
+                exit 1
+              fi
+              echo "Waiting for the RolePilot icon deployment... attempt $i/36"
+              sleep 5
+            done
+          else
+            echo "Scheduled icon check failed."
+            exit 1
+          fi
 
       - name: Wait for direct-application deployment
         if: ${{ github.event_name != 'schedule' }}
