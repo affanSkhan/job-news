@@ -44,7 +44,7 @@ export async function GET(req:Request){
     }catch{}
   }
 
-  const result:any={ok:true,service:"job-news",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
+  const result:any={ok:true,service:"rolepilot",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
   if(new URL(req.url).searchParams.get("check")==="resume"){
     try{
       const {parseResume}=await import("../../../lib/resume-parser");
