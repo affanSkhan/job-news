@@ -402,3 +402,8 @@ RolePilot is actively deployed and evolving. Some account/database-backed featur
 ## License
 
 No license file is currently declared in this repository. Public visibility does **not** by itself grant permission to copy, modify or redistribute the source code. Add an explicit license before treating the repository as an open-source project.
+
+
+### Monetization
+
+AdSense support is enabled in production through environment configuration; publisher credentials are not stored in the repository.
