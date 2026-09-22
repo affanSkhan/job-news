@@ -12,7 +12,8 @@ export async function POST(req:Request){
   let b:any;
   try{b=await req.json()}catch{return NextResponse.json({ok:false,error:"invalid_json"},{status:400})}
   const eventName=String(b?.eventName||"");
-  if(!ALLOWED.has(eventName))return NextResponse.json({ok:false,error:"invalid_event"},{status:400});
+if(!ALLOWED.has(eventName))return NextResponse.json({ok:false,error:"invalid_event"},{status:400});
+  if(eventName==="page_view")return NextResponse.json({ok:true,stored:false,reason:"page_views_tracked_in_ga"},{status:202,headers:{"Cache-Control":"no-store"}});
   const path=String(b?.path||"").slice(0,500);
   const jobId=b?.jobId?String(b.jobId).slice(0,200):null;
   if(!sql)return NextResponse.json({ok:true,stored:false},{status:202,headers:{"Cache-Control":"no-store"}});
