@@ -52,7 +52,7 @@ export default function Home(){
             <h1>Find the right role.<br className="desktop-break"/> Before the crowd.</h1>
             <p className="hero-copy">Fresh jobs. Better matches. Straight to the real application.</p>
 
-            <form className="search home-search" action="/jobs">
+            <form className="search home-search" action="/jobs" data-analytics-search="home" data-result-count="0">
               <input className="input" name="q" placeholder="Try “fresher software internship in Pune”" aria-label="Search jobs and internships"/>
               <button className="btn" type="submit">Find roles</button>
             </form>
