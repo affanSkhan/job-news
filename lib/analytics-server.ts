@@ -31,7 +31,8 @@ export async function recordAnalyticsEvents(events:EventInput[],userId?:string|n
       params
     );
     return true;
-  }catch{
+  }catch(error){
+    if(!(error instanceof Error)||!/foreign key|violates.*constraint/i.test(error.message))return false;
     const retryRows=rows.map(row=>[row[0],row[1],row[2],null,row[4]]);
     const retryParams:any[]=[];
     const retryGroups=retryRows.map(row=>{
