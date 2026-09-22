@@ -8,6 +8,7 @@ import {isDirectApplication} from "../../../lib/application";
 import Brand from "../../components/brand";
 import {SITE_URL} from "../../../lib/site";
 import {JobViewAnalytics} from "../../components/analytics";
+import AdSlot from "../../components/ad-slot";
 
 function escapeHtml(value:string){
   return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -116,6 +117,7 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
 
     <div className="container section job-detail">
       <JobViewAnalytics jobId={j.id} company={j.company} location={j.location} workMode={j.workMode} employmentType={j.type} source={j.sourceName}/>
+      <AdSlot className="ad-slot-detail"/>
       <nav className="breadcrumbs">
         <Link href="/">Home</Link><span>/</span><Link href="/jobs">Jobs</Link><span>/</span><span>{j.title}</span>
       </nav>
