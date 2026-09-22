@@ -4,6 +4,8 @@ import {Analytics} from "./components/analytics";
 import {AdSense} from "./components/adsense";
 import {SITE_NAME,SITE_URL} from "../lib/site";
 
+const adsenseId=process.env.NEXT_PUBLIC_ADSENSE_ID;
+
 export const metadata:Metadata={
   metadataBase:new URL(SITE_URL),
   title:{
@@ -37,6 +39,7 @@ export const metadata:Metadata={
     title:"Fresh Jobs & Internships in India | RolePilot",
     description:"Fresh jobs, internships and direct employer opportunities across India."
   },
+  ...(adsenseId?{other:{"google-adsense-account":adsenseId}}:{}),
   icons:{
     icon:"/icon.png",
     shortcut:"/icon.png",
