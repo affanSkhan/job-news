@@ -2,6 +2,7 @@
 
 import {useEffect,useState} from "react";
 import {authClient} from "../../lib/auth/client";
+import {trackAnalytics} from "./analytics";
 
 type AuthPromptProps={
   open:boolean;
@@ -27,6 +28,7 @@ export default function AuthPrompt({
 
   useEffect(()=>{
     if(!open)return;
+    trackAnalytics("auth_start",{surface:"auth_prompt",intent:title});
     const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!busy)onClose()};
     document.addEventListener("keydown",onKey);
     return()=>document.removeEventListener("keydown",onKey);
@@ -51,10 +53,12 @@ export default function AuthPrompt({
         :await authClient.signUp.email({email,password,name:name||email.split("@")[0]});
 
       if(result.error){
+        trackAnalytics("auth_error",{surface:"auth_prompt",mode,error:String(result.error.message||"").slice(0,180)});
         setMessage(result.error.message||"Authentication failed. Please try again.");
         return;
       }
 
+      trackAnalytics("auth_success",{surface:"auth_prompt",mode});
       await onAuthenticated?.();
       onClose();
     }catch(error){
