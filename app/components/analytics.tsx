@@ -90,8 +90,11 @@ export function trackAnalytics(eventName:EventName,metadata:Record<string,string
   if(typeof window==="undefined")return;
   const path=window.location.pathname;
   const merged={...contextMetadata(),...metadata};
-  const payload={eventName,path,jobId,metadata:merged};
-  void fetch("/api/events",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),keepalive:true,credentials:"same-origin"}).catch(()=>{});
+const SERVER_EVENTS=new Set<EventName>(["job_view","apply_click","search","resume_upload","resume_match_view","save_job","auth_start","auth_success","auth_error","application_marked"]);
+  if(SERVER_EVENTS.has(eventName)){
+    const payload={eventName,path,jobId,metadata:merged};
+    void fetch("/api/events",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),keepalive:true,credentials:"same-origin"}).catch(()=>{});
+  }
   const gtag=(window as typeof window & {gtag?: (...args:unknown[])=>void}).gtag;
   if(gtag)gtag("event",eventName,{...metadata,page_path:path,job_id:jobId||undefined});
 }
