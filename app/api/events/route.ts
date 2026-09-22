@@ -16,10 +16,17 @@ export async function POST(req:Request){
   const inputMetadata=b?.metadata&&typeof b.metadata==="object"&&!Array.isArray(b.metadata)?b.metadata:{};
   const metadata=Object.fromEntries(Object.entries(inputMetadata).slice(0,40).map(([k,v])=>[String(k).slice(0,80),typeof v==="string"?v.slice(0,500):typeof v==="number"||typeof v==="boolean"?v:null]));
   const user=await getCurrentUser();
+  let stored=true;
   try{
     await sql.query("INSERT INTO public.analytics_events(user_id,event_name,path,job_id,metadata) VALUES($1,$2,$3,$4,$5::jsonb)",[user?.id||null,eventName,path,jobId,JSON.stringify(metadata)]);
-  }catch{
-    await sql.query("INSERT INTO public.analytics_events(user_id,event_name,path,job_id,metadata) VALUES($1,$2,$3,NULL,$4::jsonb)",[user?.id||null,eventName,path,JSON.stringify(metadata)]).catch(()=>{});
+  }catch(error){
+    if(error instanceof Error && /foreign key|violates.*constraint/i.test(error.message) && jobId){
+      try{
+        await sql.query("INSERT INTO public.analytics_events(user_id,event_name,path,job_id,metadata) VALUES($1,$2,$3,NULL,$4::jsonb)",[user?.id||null,eventName,path,JSON.stringify(metadata)]);
+      }catch{stored=false}
+    }else{
+      stored=false;
+    }
   }
-  return NextResponse.json({ok:true,stored:true},{headers:{"Cache-Control":"no-store"}});
+  return NextResponse.json({ok:true,stored},{status:stored?200:202,headers:{"Cache-Control":"no-store"}});
 }
