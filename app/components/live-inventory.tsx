@@ -8,7 +8,7 @@ export default function LiveInventory(){
 
   const refresh=useCallback(async()=>{
     try{
-      const r=await fetch("/api/health",{cache:"no-store",headers:{"cache-control":"no-cache"}});
+      const r=await fetch("/api/health",{cache:"default"});
       if(!r.ok)return;
       setHealth(await r.json());
     }catch{}
