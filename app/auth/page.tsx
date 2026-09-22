@@ -4,6 +4,7 @@ import Link from "next/link";
 import {useState} from "react";
 import {useRouter} from "next/navigation";
 import {authClient} from "../../lib/auth/client";
+import {trackAnalytics} from "../components/analytics";
 
 export default function AuthPage(){
   const router=useRouter();
@@ -23,16 +24,19 @@ export default function AuthPage(){
       ?(new URLSearchParams(window.location.search).get("next")||"/account")
       :"/account";
 
+    trackAnalytics("auth_start",{surface:"auth_page",mode});
     try{
       const result=mode==="in"
         ?await authClient.signIn.email({email,password})
         :await authClient.signUp.email({email,password,name:name||email.split("@")[0]});
 
       if(result.error){
+        trackAnalytics("auth_error",{surface:"auth_page",mode,error:String(result.error.message||"").slice(0,180)});
         setMsg(result.error.message??"Authentication failed. Please try again.");
         return;
       }
 
+      trackAnalytics("auth_success",{surface:"auth_page",mode});
       window.location.assign(next);
     }catch(error){
       setMsg(error instanceof Error?error.message:"Authentication failed. Please try again.");
