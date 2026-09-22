@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/render-keepalive.yml"
       - "app/api/keepalive/route.ts"
+      - "app/api/resume/route.ts"
   workflow_dispatch:
 permissions: {}
 env:

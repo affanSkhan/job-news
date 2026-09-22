@@ -1,4 +1,5 @@
 import {NextResponse} from "next/server";
+import fs from "node:fs/promises";
 import {getCurrentUser,ensureProfile} from "../../../lib/current-user";
 import {getDb} from "../../../lib/db";
 import {parseResume} from "../../../lib/resume-parser";
@@ -48,7 +49,6 @@ export async function POST(req:Request){
   if(!allowed.includes(value.type))return NextResponse.json({error:"Upload PDF, DOCX, or TXT."},{status:415});
 
   const sql=getDb();
-  if(!sql)return NextResponse.json({error:"Resume matching is temporarily unavailable because the database is not configured."},{status:503});
 
   try{
     const parsed=await parseResume(Buffer.from(await value.arrayBuffer()),value.type);
@@ -56,7 +56,8 @@ export async function POST(req:Request){
     // Authentication is optional here. Anonymous visitors get matches immediately;
     // signed-in users also keep the extracted profile for their private Radar.
     const user=await getCurrentUser().catch(()=>null);
-    if(user){
+    let profileStored=false;
+    if(user && sql){
       try{
         const profile=await ensureProfile(user);
         const existingSkills=Array.isArray(profile?.skills)?profile.skills.map(String):[];
@@ -68,18 +69,49 @@ export async function POST(req:Request){
           "UPDATE public.profiles SET headline=COALESCE(NULLIF(headline,''),$1),desired_titles=$2,skills=$3,profile_text=$4,resume_text=$5,resume_filename=$6,resume_skills=$7,resume_roles=$8,resume_profile=$9::jsonb,resume_uploaded_at=now(),updated_at=now(),embedding=NULL WHERE id=$10",
           [parsed.headline||"",roles,skills,profileText,parsed.text,value.name,parsed.skills,parsed.roles,JSON.stringify({headline:parsed.headline,summary:parsed.summary,skills:parsed.skills,roles:parsed.roles}),user.id]
         );
+        profileStored=true;
       }catch{
         // Matching must remain available even when optional account persistence fails.
       }
     }
 
-    const rows=await sql.query(
-      `SELECT j.id AS job_id,j.title,j.company_name,j.slug,j.location,j.work_mode,j.employment_type,j.salary_text,j.skills,j.source_name,j.apply_url,j.verified,j.published_at,j.updated_at
-       FROM public.jobs j
-       WHERE j.status='active' AND coalesce(j.published_at,j.updated_at)>=now()-interval '90 days'
-       ORDER BY coalesce(j.published_at,j.updated_at) DESC NULLS LAST
-       LIMIT 1500`
-    );
+    let rows:any[]=[];
+    if(sql){
+      try{
+        rows=await sql.query(
+          `SELECT j.id AS job_id,j.title,j.company_name,j.slug,j.location,j.work_mode,j.employment_type,j.salary_text,j.skills,j.source_name,j.apply_url,j.verified,j.published_at,j.updated_at
+           FROM public.jobs j
+           WHERE j.status='active' AND coalesce(j.published_at,j.updated_at)>=now()-interval '90 days'
+           ORDER BY coalesce(j.published_at,j.updated_at) DESC NULLS LAST
+           LIMIT 1500`
+        );
+      }catch(error){
+        console.warn("Resume matching database unavailable; using public job cache.",error instanceof Error?error.message:String(error));
+      }
+    }
+
+    if(!rows.length){
+      const cache=JSON.parse(await fs.readFile("data/public-jobs.json","utf8"));
+      rows=cache
+        .filter((job:any)=>job?.status==="active" && job?.applyUrl)
+        .slice(0,1500)
+        .map((job:any)=>({
+          job_id:job.id,
+          title:job.title,
+          company_name:job.company,
+          slug:job.slug,
+          location:job.location,
+          work_mode:job.workMode,
+          employment_type:job.type,
+          salary_text:job.salary,
+          skills:job.skills,
+          source_name:job.sourceName,
+          apply_url:job.applyUrl,
+          verified:job.verified,
+          published_at:job.publishedAt,
+          updated_at:job.updatedAt
+        }));
+    }
 
     const items=dedupeResumeRows(rows)
       .map((job:any)=>scoreJob(job,parsed.skills,parsed.roles))
@@ -94,7 +126,7 @@ export async function POST(req:Request){
       skills:parsed.skills,
       roles:parsed.roles,
       anonymous:true,
-      profileStored:Boolean(user),
+      profileStored,
       items
     });
   }catch(error){
