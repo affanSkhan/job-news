@@ -1,13 +1,17 @@
 "use client";
 
-import {useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
+import {trackAnalytics} from "./analytics";
 
 export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
   const inputRef=useRef<HTMLInputElement|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState(""),[result,setResult]=useState<any>(null),[deleted,setDeleted]=useState(false);
   const router=useRouter();
+  useEffect(()=>{
+    if(result)trackAnalytics("resume_match_view",{match_count:Array.isArray(result.items)?result.items.length:0,skill_count:Array.isArray(result.skills)?result.skills.length:0,role_count:Array.isArray(result.roles)?result.roles.length:0});
+  },[result]);
 
   async function upload(file:File){
     setBusy(true);setError("");setResult(null);
@@ -16,7 +20,7 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
       const r=await fetch("/api/resume",{method:"POST",body});
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data.error||"Resume upload failed.");
-      setResult(data);setDeleted(false);router.refresh();
+      trackAnalytics("resume_upload",{file_type:file.type,file_size_kb:Math.round(file.size/1024)});setResult(data);setDeleted(false);router.refresh();
     }catch(e){setError(e instanceof Error?e.message:"Resume upload failed.")}
     finally{setBusy(false)}
   }
@@ -54,13 +58,13 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
       {!result.items?.length?<p>No close matches yet. Try again later or explore all roles.</p>:
       <div>
         <h4 className="resume-results-title">Good matches</h4>
-        <div className="grid">{result.items.slice(0,6).map((j:any)=><article className="card job-card" key={j.job_id}>
+        <div className="grid">{result.items.slice(0,6).map((j:any,index:number)=><article className="card job-card" key={j.job_id}>
           <div className="eyebrow">Match {(Number(j.score||0)*100).toFixed(0)}%</div>
           <h4 className="title"><Link href={"/jobs/"+j.slug}>{j.title}</Link></h4>
           <div className="company">{j.company_name}</div>
           <div className="meta"><span className="badge">{j.location}</span>{j.direct_application&&<span className="badge good">Employer application</span>}</div>
           <div className="reason"><b>Why:</b> {j.reason}</div>
-          <div className="apply"><span className="direct">↗ Employer / ATS</span><a href={j.apply_url||"/jobs/"+j.slug} target="_blank" rel="noopener noreferrer">Apply →</a></div>
+          <div className="apply"><span className="direct">↗ Employer / ATS</span><a href={"/api/apply/"+encodeURIComponent(j.slug)+"?placement=resume_match&position="+(index+1)} target="_blank" rel="nofollow noopener noreferrer">Apply →</a></div>
         </article>)}</div>
       </div>}
     </div>}
