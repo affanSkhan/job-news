@@ -4,44 +4,96 @@ import Script from "next/script";
 import {usePathname} from "next/navigation";
 
 const SESSION_KEY="rolepilot_analytics_session";
+const SESSION_STARTED_KEY="rolepilot_analytics_started";
+const LANDING_KEY="rolepilot_analytics_landing";
+const ACQUISITION_KEY="rolepilot_analytics_acquisition";
 const EVENT_NAMES=["page_view","job_view","apply_click","search","resume_upload","resume_match_view","save_job","auth_start","auth_success","auth_error","application_marked"] as const;
 type EventName=typeof EVENT_NAMES[number];
 
+function safeSessionGet(key:string){
+  try{return sessionStorage.getItem(key)||""}catch{return ""}
+}
+function safeSessionSet(key:string,value:string){
+  try{sessionStorage.setItem(key,value)}catch{}
+}
 function getSessionId(){
+  const existing=safeSessionGet(SESSION_KEY);
+  if(existing)return existing;
   try{
-    const existing=sessionStorage.getItem(SESSION_KEY);
-    if(existing)return existing;
     const value=crypto.randomUUID();
-    sessionStorage.setItem(SESSION_KEY,value);
+    safeSessionSet(SESSION_KEY,value);
     return value;
   }catch{return undefined}
 }
-
-function contextMetadata(){
-  if(typeof window==="undefined")return {};
+function getSessionStarted(){
+  const existing=Number(safeSessionGet(SESSION_STARTED_KEY));
+  if(existing>0)return existing;
+  const now=Date.now();
+  safeSessionSet(SESSION_STARTED_KEY,String(now));
+  return now;
+}
+function getLandingPath(){
+  const existing=safeSessionGet(LANDING_KEY);
+  if(existing)return existing;
+  const path=typeof window!=="undefined"?window.location.pathname:"/";
+  safeSessionSet(LANDING_KEY,path);
+  return path;
+}
+function getAcquisition(){
+  if(typeof window==="undefined")return {referrer:"",referrer_domain:"",utm_source:"",utm_medium:"",utm_campaign:"",utm_content:"",utm_term:"",traffic_type:"direct"};
+  const cached=safeSessionGet(ACQUISITION_KEY);
+  if(cached){
+    try{return JSON.parse(cached)}
+    catch{}
+  }
   const params=new URLSearchParams(window.location.search);
   const referrer=document.referrer||"";
   let referrerDomain="";
   try{referrerDomain=referrer?new URL(referrer).hostname.replace(/^www\./,""):""}catch{}
-  return {
-    session_id:getSessionId(),
+  const utmSource=(params.get("utm_source")||"").slice(0,120);
+  const utmMedium=(params.get("utm_medium")||"").slice(0,120);
+  const trafficType=utmSource||utmMedium
+    ? "campaign"
+    : referrerDomain
+      ? /google\.|bing\.|duckduckgo\.|yahoo\./i.test(referrerDomain)?"organic":"referral"
+      : "direct";
+  const value={
     referrer:referrer.slice(0,500),
     referrer_domain:referrerDomain,
-    utm_source:params.get("utm_source")||"",
-    utm_medium:params.get("utm_medium")||"",
-    utm_campaign:params.get("utm_campaign")||"",
-    device_type:/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)?"mobile":"desktop",
+    utm_source:utmSource,
+    utm_medium:utmMedium,
+    utm_campaign:(params.get("utm_campaign")||"").slice(0,160),
+    utm_content:(params.get("utm_content")||"").slice(0,160),
+    utm_term:(params.get("utm_term")||"").slice(0,160),
+    traffic_type:trafficType
+  };
+  safeSessionSet(ACQUISITION_KEY,JSON.stringify(value));
+  return value;
+}
+function contextMetadata(){
+  if(typeof window==="undefined")return {};
+  const started=getSessionStarted();
+  return {
+    session_id:getSessionId(),
+    session_started_at:new Date(started).toISOString(),
+    session_age_seconds:Math.max(0,Math.round((Date.now()-started)/1000)),
+    landing_path:getLandingPath(),
+    page_title:document.title.slice(0,200),
+    ...getAcquisition(),
+    device_type:/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)?"mobile":window.innerWidth<1100?"tablet":"desktop",
     viewport_width:window.innerWidth||0,
     language:(navigator.language||"").slice(0,20)
   };
 }
 
-export function trackAnalytics(eventName:EventName, metadata:Record<string,string|number|boolean|undefined>={}, jobId?:string){
+export function trackAnalytics(eventName:EventName,metadata:Record<string,string|number|boolean|undefined>={},jobId?:string){
   if(typeof window==="undefined")return;
-  const payload={eventName,path:window.location.pathname,jobId,metadata:{...contextMetadata(),...metadata}};
+  const path=window.location.pathname;
+  const merged={...contextMetadata(),...metadata};
+  const payload={eventName,path,jobId,metadata:merged};
   void fetch("/api/events",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),keepalive:true,credentials:"same-origin"}).catch(()=>{});
   const gtag=(window as typeof window & {gtag?: (...args:unknown[])=>void}).gtag;
-  if(gtag)gtag("event",eventName,{...metadata,page_path:window.location.pathname,job_id:jobId||undefined});
+  if(gtag)gtag("event",eventName,{...metadata,page_path:path,job_id:jobId||undefined});
 }
 
 export function JobViewAnalytics({jobId,company,location,workMode,employmentType,source}:{

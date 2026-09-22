@@ -14,19 +14,24 @@ export async function GET(req:Request,{params}:{params:Promise<{slug:string}>}){
   const placement=(url.searchParams.get("placement")||"unknown").slice(0,80);
   const position=Number(url.searchParams.get("position")||0)||0;
   const user=await getCurrentUser().catch(()=>null);
-  void recordAnalyticsEvents([{
-    eventName:"apply_click",
-    path:url.pathname,
-    jobId:job.id,
-    metadata:{
-      placement,
-      result_position:position,
-      company:job.company,
-      location:job.location,
-      work_mode:job.workMode,
-      employment_type:job.type,
-      referrer:req.headers.get("referer")||""
-    }
-  }],user?.id||null);
+  try{
+    await Promise.race([
+      recordAnalyticsEvents([{
+        eventName:"apply_click",
+        path:url.pathname,
+        jobId:job.id,
+        metadata:{
+          placement,
+          result_position:position,
+          company:job.company,
+          location:job.location,
+          work_mode:job.workMode,
+          employment_type:job.type,
+          referrer:req.headers.get("referer")||""
+        }
+      }],user?.id||null),
+      new Promise<boolean>(resolve=>setTimeout(()=>resolve(false),500))
+    ]);
+  }catch{}
   return NextResponse.redirect(job.applyUrl,302);
 }
