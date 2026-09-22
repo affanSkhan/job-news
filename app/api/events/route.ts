@@ -6,13 +6,13 @@ const ALLOWED=new Set(["page_view","job_view","apply_click","search","resume_upl
 
 export async function POST(req:Request){
   const sql=getDb();
-  if(!sql)return NextResponse.json({ok:false},{status:503});
   let b:any;
   try{b=await req.json()}catch{return NextResponse.json({ok:false,error:"invalid_json"},{status:400})}
   const eventName=String(b?.eventName||"");
   if(!ALLOWED.has(eventName))return NextResponse.json({ok:false,error:"invalid_event"},{status:400});
   const path=String(b?.path||"").slice(0,500);
   const jobId=b?.jobId?String(b.jobId).slice(0,200):null;
+  if(!sql)return NextResponse.json({ok:true,stored:false},{status:202,headers:{"Cache-Control":"no-store"}});
   const inputMetadata=b?.metadata&&typeof b.metadata==="object"&&!Array.isArray(b.metadata)?b.metadata:{};
   const metadata=Object.fromEntries(Object.entries(inputMetadata).slice(0,40).map(([k,v])=>[String(k).slice(0,80),typeof v==="string"?v.slice(0,500):typeof v==="number"||typeof v==="boolean"?v:null]));
   const user=await getCurrentUser();
