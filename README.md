@@ -297,12 +297,18 @@ npm start
 | <code>RESEND_API_KEY</code> | Alerts | Email delivery |
 | <code>ALERT_FROM_EMAIL</code> | Alerts | Sender address |
 | <code>NEXT_PUBLIC_GA_ID</code> | Analytics | Optional |
-| <code>NEXT_PUBLIC_ADSENSE_ID</code> | Ads | Optional |
+| <code>NEXT_PUBLIC_ADSENSE_ID</code> | Ads | Optional | AdSense client ID, e.g. <code>ca-pub-...</code> |
+| <code>NEXT_PUBLIC_ADSENSE_SLOT</code> | Ads | Optional | Responsive ad-unit slot ID for manual placements |
+
 | <code>GREENHOUSE_BOARDS</code> | Ingestion | Optional board configuration |
 | <code>LEVER_SITES</code> | Ingestion | Optional site configuration |
 | <code>ASHBY_BOARDS</code> | Ingestion | Optional board configuration |
 
 See <code>.env.example</code> for the complete list.
+
+## AdSense monetization
+
+RolePilot loads the AdSense client script globally when <code>NEXT_PUBLIC_ADSENSE_ID</code> is configured and exposes <code>/ads.txt</code> from the same configuration. Auto ads are controlled in the AdSense dashboard; manual responsive placements are enabled when <code>NEXT_PUBLIC_ADSENSE_SLOT</code> is also configured. Google notes that a site must be added to AdSense and reach a <code>Ready</code> status before ads can serve. citeturn491660search1turn491660search3
 
 ## SEO and discoverability
 
