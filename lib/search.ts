@@ -1,8 +1,9 @@
 import {getDb} from "./db";import {embedText} from "./embeddings";import {getActiveJobsAsync} from "./jobs";import type {Job} from "./jobs";import {canonicalApplicationUrl} from "./jobs";
 function map(r:any):Job{return{id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:r.description||"",location:r.location,workMode:r.work_mode,type:r.employment_type,salary:r.salary_text,salaryMin:r.salary_min,salaryMax:r.salary_max,currency:r.currency,skills:r.skills||[],category:r.category||"Other",experience:r.experience||"Not specified",publishedAt:String(r.published_at||""),updatedAt:String(r.updated_at||""),sourceName:r.source_name||"",sourceUrl:r.source_url||"",applyUrl:r.apply_url||"",verified:Boolean(r.verified),freshness:r.freshness||"older",tags:r.tags||[],aiSummary:r.ai_summary||undefined,aiHighlights:r.ai_highlights||[],companyId:r.company_id||undefined,status:r.status||"active"}}
 function dedupeResults(items:{job:Job;score:number}[]){const map=new Map<string,{job:Job;score:number}>();for(const item of items){const key=canonicalApplicationUrl(item.job.applyUrl)||("fallback:"+item.job.title+"|"+item.job.company+"|"+item.job.location).toLowerCase();const prev=map.get(key);if(!prev||item.score>prev.score||(!prev.job.company&&item.job.company))map.set(key,item)}return [...map.values()]}
+const DB_SEMANTIC_SEARCH=process.env.ROLEPILOT_DB_SEMANTIC_SEARCH==="1";
 export async function semanticSearch(q:string):Promise<{job:Job;score:number}[]>{
-  const sql=getDb();
+  const sql=DB_SEMANTIC_SEARCH?getDb():null;
   if(sql){
     try{
       const embedding=await embedText(q);
