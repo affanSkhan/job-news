@@ -33,9 +33,37 @@ function fallbackStats(){
   };
 }const JOB_COLUMNS="id,slug,title,company_name,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
 const JOB_DETAIL_COLUMNS="id,slug,title,company_name,description,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
-export async function getActiveJobStatsAsync(){const sql=getDb();if(!sql)return fallbackStats();try{const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);const r=rows[0]||{};return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}}catch{return fallbackStats()}}
-export async function getActiveJobsAsync(limit=5000){const sql=getDb();const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));if(!sql)return readPublicCache().slice(0,safeLimit);try{const data=await sql.query("SELECT "+JOB_COLUMNS+" FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT "+safeLimit,[]);return dedupeJobs(data.map(row))}catch{return readPublicCache().slice(0,safeLimit)}}
-export async function getJobAsync(slug:string){const sql=getDb();if(!sql)return readPublicCache().find(j=>j.slug===slug);try{const data=await sql.query("SELECT "+JOB_DETAIL_COLUMNS+" FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1",[slug]);return data[0]?row(data[0]):readPublicCache().find(j=>j.slug===slug)}catch{return readPublicCache().find(j=>j.slug===slug)}}
+const DB_CATALOG_READS=process.env.ROLEPILOT_DB_CATALOG_READS==="1";
+export async function getActiveJobStatsAsync(){
+  if(!DB_CATALOG_READS)return fallbackStats();
+  const sql=getDb();if(!sql)return fallbackStats();
+  try{
+    const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);
+    const r=rows[0]||{};
+    return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}
+  }catch{return fallbackStats()}
+}
+export async function getActiveJobsAsync(limit=5000){
+  const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));
+  const cached=readPublicCache();
+  if(cached.length)return cached.slice(0,safeLimit);
+  if(!DB_CATALOG_READS)return [];
+  const sql=getDb();if(!sql)return [];
+  try{
+    const data=await sql.query("SELECT "+JOB_COLUMNS+" FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT "+safeLimit,[]);
+    return dedupeJobs(data.map(row))
+  }catch{return []}
+}
+export async function getJobAsync(slug:string){
+  const cached=readPublicCache().find(j=>j.slug===slug);
+  if(cached)return cached;
+  if(!DB_CATALOG_READS)return undefined;
+  const sql=getDb();if(!sql)return undefined;
+  try{
+    const data=await sql.query("SELECT "+JOB_DETAIL_COLUMNS+" FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1",[slug]);
+    return data[0]?row(data[0]):undefined
+  }catch{return undefined}
+}
 export function getJobs():Job[]{return readPublicCache()}
 export function getActiveJobs():Job[]{return readPublicCache().filter(j=>j.status==="active")}
 export function getJob(slug:string):Job|undefined{return readPublicCache().find(j=>j.slug===slug)}
