@@ -4,8 +4,8 @@ import {useEffect} from "react";
 
 function normalizeClientId(value:string){
   const id=value.trim();
-  if(/^ca-pub-\\d{16}$/.test(id))return id;
-  if(/^pub-\\d{16}$/.test(id))return `ca-${id}`;
+  if(/^ca-pub-[0-9]{16}$/.test(id))return id;
+  if(/^pub-[0-9]{16}$/.test(id))return `ca-${id}`;
   return "";
 }
 
