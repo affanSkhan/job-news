@@ -2,6 +2,7 @@
 
 import {useState} from "react";
 import AuthPrompt from "./auth-prompt";
+import {trackAnalytics} from "./analytics";
 
 export default function SaveJob({jobId}:{jobId:string}){
   const [msg,setMsg]=useState("");
@@ -15,6 +16,7 @@ export default function SaveJob({jobId}:{jobId:string}){
     });
     if(r.status===401)return false;
     setMsg(r.ok?"Saved":"Could not save");
+    if(r.ok)trackAnalytics("save_job",{result:"saved"},jobId);
     return r.ok;
   }
 
