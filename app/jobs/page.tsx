@@ -99,7 +99,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
         </div>
         <Link className="chip active" href="/jobs">Clear filters</Link>
       </div>
-      <form className="filter-panel" method="get">
+      <form className="filter-panel" method="get" data-analytics-search="jobs" data-result-count={sorted.length}>
         <div className="filter-row">
           <label className="filter-field filter-wide"><span>Search</span><input className="input" name="q" defaultValue={q} placeholder="Python intern, AI engineer, Flutter, data analyst…"/></label>
           <label className="filter-field"><span>Location</span><input className="input" name="location" defaultValue={loc} placeholder="Pune, Bengaluru, Hyderabad…"/></label>
@@ -129,7 +129,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
       </div>
       {jobs.length===0?<div className="card"><h2>No current matches</h2><p>Try a broader search, remove a filter, or let Radar search from your resume.</p><div className="chips"><Link className="chip" href="/jobs">View all jobs</Link><Link className="btn" href="/account">Build my Radar</Link></div></div>:<>
         <div className="grid">
-          {jobs.map(j=>{
+          {jobs.map((j,index)=>{
             const isDirect=isDirectApplication(j.applyUrl,j.company);
             return <article className="card job-card" key={j.id}>
               <div className="eyebrow">{j.freshness==="today"?"Found today":j.freshness==="this-week"?"Found this week":"Recent"} · {j.sourceName}</div>
@@ -138,7 +138,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
               <div className="meta"><span className="badge">{j.type}</span><span className="badge">{j.workMode}</span>{j.verified&&<span className="badge good">Verified</span>}{india&&INDIA_TERMS.test(j.location)&&<span className="badge india-badge">🇮🇳 India</span>}{isDirect&&<span className="badge good">Direct application</span>}</div>
               <div className="facts"><div className="fact"><b>Location</b>{j.location}</div><div className="fact"><b>Compensation</b>{j.salary}</div><div className="fact"><b>Category</b>{j.category}</div><div className="fact"><b>Experience</b>{j.experience}</div></div>
               <p>{j.aiSummary||"Direct employer / ATS opportunity."}</p>
-              <div className="apply"><span className="direct">↗ Employer application</span><a href={j.applyUrl||"/jobs/"+j.slug} target="_blank" rel="noopener noreferrer">Apply →</a></div>
+              <div className="apply"><span className="direct">↗ Employer application</span><a href={"/api/apply/"+encodeURIComponent(j.slug)+"?placement=jobs_list&position="+((page-1)*size+index+1)} target="_blank" rel="nofollow noopener noreferrer">Apply →</a></div>
             </article>
           })}
         </div>
