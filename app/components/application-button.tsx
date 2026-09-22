@@ -2,6 +2,7 @@
 
 import {useState} from "react";
 import AuthPrompt from "./auth-prompt";
+import {trackAnalytics} from "./analytics";
 
 export default function ApplicationButton({jobId}:{jobId:string}){
   const [msg,setMsg]=useState("");
@@ -15,6 +16,7 @@ export default function ApplicationButton({jobId}:{jobId:string}){
     });
     if(r.status===401)return false;
     setMsg(r.ok?"Tracked as applied":"Could not update");
+    if(r.ok)trackAnalytics("application_marked",{status:"applied"},jobId);
     return r.ok;
   }
 
