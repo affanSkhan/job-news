@@ -7,6 +7,7 @@ import ApplicationButton from "../../components/application-button";
 import {isDirectApplication} from "../../../lib/application";
 import Brand from "../../components/brand";
 import {SITE_URL} from "../../../lib/site";
+import {JobViewAnalytics} from "../../components/analytics";
 
 function escapeHtml(value:string){
   return value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -114,6 +115,7 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
     </header>
 
     <div className="container section job-detail">
+      <JobViewAnalytics jobId={j.id} company={j.company} location={j.location} workMode={j.workMode} employmentType={j.type} source={j.sourceName}/>
       <nav className="breadcrumbs">
         <Link href="/">Home</Link><span>/</span><Link href="/jobs">Jobs</Link><span>/</span><span>{j.title}</span>
       </nav>
@@ -171,7 +173,7 @@ export default async function JobPage({params}:{params:Promise<{slug:string}>}){
             </div>
 
             <div className="action-panel">
-              <a className="btn apply-cta" href={j.applyUrl} target="_blank" rel="nofollow noopener noreferrer">{direct?"Apply on employer / ATS ↗":"Open source listing ↗"}</a>
+              <a className="btn apply-cta" href={"/api/apply/"+encodeURIComponent(j.slug)+"?placement=job_detail"} target="_blank" rel="nofollow noopener noreferrer">{direct?"Apply on employer / ATS ↗":"Open source listing ↗"}</a>
               <div className="secondary-actions"><SaveJob jobId={j.id}/><ApplicationButton jobId={j.id}/></div>
             </div>
 
