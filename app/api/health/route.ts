@@ -2,8 +2,6 @@ export const dynamic="force-dynamic";
 import {NextResponse} from "next/server";
 import fs from "node:fs";
 import path from "node:path";
-import {getActiveJobStatsAsync} from "../../../lib/jobs";
-import {getDb} from "../../../lib/db";
 
 function smokePdf(){
   const objects=[
@@ -25,37 +23,42 @@ function smokePdf(){
 }
 
 export async function GET(req:Request){
-  const sql=getDb();
-  let databaseReachable=false;
+  const params=new URL(req.url).searchParams;
+  const wantsDb=params.get("check")==="db"||process.env.ROLEPILOT_HEALTH_DB==="1";
+  let databaseConfigured=Boolean(process.env.DATABASE_URL);
+  let databaseReachable:null|boolean=null;
   let activeJobs=0;
   let enabledSources=0;
   let lastRun=null;
-  if(sql){
+
+  try{
+    const meta=JSON.parse(fs.readFileSync(path.join(process.cwd(),"data","public-jobs-meta.json"),"utf8"));
+    activeJobs=Number(meta.count||0);
+    lastRun={started_at:meta.generatedAt,status:"cache",jobs_upserted:meta.count};
+  }catch{}
+
+  if(wantsDb){
     try{
-      const rows=await sql.query(`SELECT
-        (SELECT count(*)::int FROM public.jobs WHERE status='active') AS active_jobs,
-        (SELECT count(*)::int FROM public.sources WHERE enabled=true) AS enabled_sources,
-        (SELECT json_build_object(
-          'started_at',r.started_at,
-          'status',r.status,
-          'jobs_upserted',r.jobs_upserted
-        ) FROM public.ingest_runs r ORDER BY r.started_at DESC LIMIT 1) AS last_run`,[]);
-      databaseReachable=true;
-      activeJobs=Number(rows[0]?.active_jobs||0);
-      enabledSources=Number(rows[0]?.enabled_sources||0);
-      lastRun=rows[0]?.last_run||null;
-    }catch{}
+      const {getDb}=await import("../../../lib/db");
+      const sql=getDb();
+      if(sql){
+        const rows=await sql.query(`SELECT
+          (SELECT count(*)::int FROM public.jobs WHERE status='active') AS active_jobs,
+          (SELECT count(*)::int FROM public.sources WHERE enabled=true) AS enabled_sources,
+          (SELECT json_build_object(
+            'started_at',r.started_at,
+            'status',r.status,
+            'jobs_upserted',r.jobs_upserted
+          ) FROM public.ingest_runs r ORDER BY r.started_at DESC LIMIT 1) AS last_run`,[]);
+        databaseReachable=true;
+        activeJobs=Number(rows[0]?.active_jobs||activeJobs);
+        enabledSources=Number(rows[0]?.enabled_sources||0);
+        lastRun=rows[0]?.last_run||lastRun;
+      }else databaseReachable=false;
+    }catch{databaseReachable=false}
   }
 
-  if(!databaseReachable){
-    try{
-      const stats=await getActiveJobStatsAsync();
-      activeJobs=stats.active;
-      const meta=JSON.parse(fs.readFileSync(path.join(process.cwd(),"data","public-jobs-meta.json"),"utf8"));
-      lastRun={started_at:meta.generatedAt,status:"cache",jobs_upserted:meta.count};
-    }catch{}
-  }
-  const result:any={ok:true,service:"rolepilot",activeJobs,databaseConfigured:Boolean(sql),databaseReachable,enabledSources,lastRun,time:new Date().toISOString()};
+  const result:any={ok:true,service:"rolepilot",activeJobs,databaseConfigured,databaseReachable,enabledSources,lastRun,time:new Date().toISOString(),databaseCheck:wantsDb?"performed":"deferred"};
   if(new URL(req.url).searchParams.get("check")==="resume"){
     try{
       const {parseResume}=await import("../../../lib/resume-parser");
@@ -66,5 +69,5 @@ export async function GET(req:Request){
       result.resumeParser={ok:false,error:error instanceof Error?error.message:String(error)};
     }
   }
-  return NextResponse.json(result,{status:result.ok?200:503,headers:{"Cache-Control":"no-store, max-age=0, must-revalidate"}});
+  return NextResponse.json(result,{status:result.ok?200:503,headers:{"Cache-Control":wantsDb?"private, no-store, max-age=0":"public, max-age=60, s-maxage=60, stale-while-revalidate=300"}});
 }
