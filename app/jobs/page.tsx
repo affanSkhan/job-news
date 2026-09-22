@@ -4,6 +4,7 @@ import type {Metadata} from "next";
 import {getActiveJobsAsync,type Job,dedupeJobs} from "../../lib/jobs";
 import {semanticSearch} from "../../lib/search";
 import {isDirectApplication} from "../../lib/application";
+import AdSlot from "../components/ad-slot";
 
 const INDIA_TERMS=/india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i;
 
@@ -127,6 +128,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
         <Link className="chip" href="/jobs?india=1&type=internship">India Internships</Link>
         <Link className="chip" href="/jobs?india=1&fresh=today">India · New today</Link>
       </div>
+      <AdSlot className="ad-slot-listing"/>
       {jobs.length===0?<div className="card"><h2>No current matches</h2><p>Try a broader search, remove a filter, or let Radar search from your resume.</p><div className="chips"><Link className="chip" href="/jobs">View all jobs</Link><Link className="btn" href="/account">Build my Radar</Link></div></div>:<>
         <div className="grid">
           {jobs.map((j,index)=>{
