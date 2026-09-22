@@ -308,7 +308,7 @@ See <code>.env.example</code> for the complete list.
 
 ## AdSense monetization
 
-RolePilot loads the AdSense client script globally when <code>NEXT_PUBLIC_ADSENSE_ID</code> is configured and exposes <code>/ads.txt</code> from the same configuration. Auto ads are controlled in the AdSense dashboard; manual responsive placements are enabled when <code>NEXT_PUBLIC_ADSENSE_SLOT</code> is also configured. Google notes that a site must be added to AdSense and reach a <code>Ready</code> status before ads can serve. citeturn491660search1turn491660search3
+RolePilot loads the AdSense client script globally when <code>NEXT_PUBLIC_ADSENSE_ID</code> is configured and exposes <code>/ads.txt</code> from the same configuration. Auto ads are controlled in the AdSense dashboard; manual responsive placements are enabled when <code>NEXT_PUBLIC_ADSENSE_SLOT</code> is also configured. Google notes that a site must be added to AdSense and reach a <code>Ready</code> status before ads can serve.
 
 ## SEO and discoverability
 
