@@ -29,6 +29,9 @@ jobs:
       - name: Production build check
         if: ${{ github.event_name != 'schedule' }}
         run: npm run build
+      - name: Resume and role search regression suite
+        if: ${{ github.event_name != 'schedule' }}
+        run: npx --yes tsx scripts/test-matching.mjs
       - name: AI web discovery
         continue-on-error: true
         run: npm run web:discover
