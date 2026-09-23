@@ -54,7 +54,7 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
     {deleted&&<div className="reason resume-result"><b>Done.</b> Your saved resume profile is gone.</div>}
 
     {result&&<div className="resume-result">
-      <div className="reason"><b>Radar ready.</b> {result.skills?.length||0} skills · {result.roles?.length||0} role signals{result.profileStored?" · saved to your account":""}.</div>
+      <div className="reason"><b>Radar ready.</b> {result.skills?.length||0} skills · {result.roleFamilies?.length||result.roles?.length||0} role signals · {result.candidateLevel==="student"?"student / entry-level":result.candidateLevel||"profile detected"}{result.profileStored?" · saved to your account":""}.</div>
       {!result.items?.length?<p>No close matches yet. Try again later or explore all roles.</p>:
       <div>
         <h4 className="resume-results-title">Good matches</h4>
@@ -62,8 +62,8 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
           <div className="eyebrow">Match {(Number(j.score||0)*100).toFixed(0)}%</div>
           <h4 className="title"><Link href={"/jobs/"+j.slug}>{j.title}</Link></h4>
           <div className="company">{j.company_name}</div>
-          <div className="meta"><span className="badge">{j.location}</span>{j.direct_application&&<span className="badge good">Employer application</span>}</div>
-          <div className="reason"><b>Why:</b> {j.reason}</div>
+          <div className="meta"><span className="badge">{j.location}</span>{j.seniority&&<span className="badge">{j.seniority}</span>}{j.direct_application&&<span className="badge good">Employer application</span>}</div>
+          <div className="reason"><b>Why:</b> {j.reason}</div>{j.matched_skills?.length&&<p className="score">Matched: {j.matched_skills.slice(0,5).join(" · ")}</p>}
           <div className="apply"><span className="direct">↗ Employer / ATS</span><a href={"/api/apply/"+encodeURIComponent(j.slug)+"?placement=resume_match&position="+(index+1)} target="_blank" rel="nofollow noopener noreferrer">Apply →</a></div>
         </article>)}</div>
       </div>}
