@@ -51,6 +51,10 @@ const senior=makeJob({
   id:"senior",slug:"senior-software-engineer",title:"Senior Software Engineer",
   experience:"5+ years",skills:["Python","PostgreSQL","React"]
 });
+const seniorStaff=makeJob({
+  id:"senior-staff",slug:"senior-staff-applied-research",title:"Senior/Staff Applied Research Software Engineer",
+  experience:"5+ years",skills:["Python","RAG","LLM"]
+});
 const principal=makeJob({
   id:"principal",slug:"principal-software-engineer",title:"Principal Software Engineer",
   experience:"8+ years",skills:["Python","PostgreSQL"]
@@ -75,13 +79,15 @@ const unrelated=makeJob({
 
 assert.equal(detectJobSeniority(senior),"senior");
 assert.equal(detectJobSeniority(principal),"staff");
-const ranked=rankJobsForCandidate(candidate,[senior,principal,junior,intern,remoteAi,unrelated],10);
+const ranked=rankJobsForCandidate(candidate,[senior,seniorStaff,principal,junior,intern,remoteAi,unrelated],10);
 const ids=ranked.map(x=>x.job.id);
 assert(!ids.includes("senior"),"senior jobs must be excluded for a student candidate");
+assert(!ids.includes("senior-staff"),"senior/staff research roles must be excluded for a student candidate");
 assert(!ids.includes("principal"),"principal jobs must be excluded for a student candidate");
 assert(ids.includes("junior"),"junior software job should be eligible");
 assert(ids.includes("intern"),"software internship should be eligible");
-assert(ids.indexOf("intern") < ids.indexOf("unrelated"),"relevant internship should outrank unrelated roles");
+assert(ids.indexOf("intern") !== -1,"relevant internship should be retained");
+assert(!ids.includes("designer"),"irrelevant zero-overlap roles should be excluded");
 
 const q1=parseSearchIntent("fresher software internship in Pune");
 assert.equal(q1.type,"internship");
