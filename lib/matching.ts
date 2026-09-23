@@ -1,4 +1,5 @@
 import type {Job} from "./jobs";
+import {isDirectApplication} from "./application";
 
 export type CandidateLevel = "student" | "entry" | "mid" | "senior" | "unknown";
 export type JobSeniority = "intern" | "entry" | "mid" | "senior" | "staff" | "unknown";
@@ -282,16 +283,6 @@ function freshnessFit(job: Job): number {
   return age <= 2 ? 1 : age <= 7 ? .8 : age <= 30 ? .5 : .25;
 }
 
-function isDirectUrl(url:string,company:string):boolean {
-  try {
-    const host = new URL(url).hostname.toLowerCase();
-    if (/greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com/.test(host)) return true;
-    const token = norm(company).split(" ")[0];
-    return Boolean(token && host.replace(/^www\./,"").includes(token));
-  } catch {
-    return false;
-  }
-}
 
 export function matchCandidateToJob(candidate: CandidateProfile, job: Job): JobMatch {
   const seniority = detectJobSeniority(job);
@@ -301,7 +292,7 @@ export function matchCandidateToJob(candidate: CandidateProfile, job: Job): JobM
   const location = locationFit(candidate, job);
   const type = typeFit(candidate, job);
   const freshness = freshnessFit(job);
-  const direct = isDirectUrl(job.applyUrl, job.company) ? 1 : 0;
+  const direct = isDirectApplication(job.applyUrl, job.company) ? 1 : 0;
 
   const score = Math.max(0, Math.min(1,
     .28*skills.fit +
@@ -431,7 +422,7 @@ export function scoreJobForSearch(intent: SearchIntent, job: Job): {score:number
   const type = queryTypeMatch(intent,job);
   const mode = queryModeMatch(intent,job);
   const seniority = querySeniorityMatch(intent,job);
-  const direct = isDirectUrl(job.applyUrl,job.company) ? 1 : 0;
+  const direct = isDirectApplication(job.applyUrl,job.company) ? 1 : 0;
 
   const eligible = loc > 0 && type > 0 && mode > 0 && seniority > 0;
   if (!eligible) return {score:0,eligible:false,reasons:[]};
@@ -462,7 +453,7 @@ export function rankJobsForSearch(query: string, jobs: Job[], limit=100) {
   const intent = parseSearchIntent(query);
   return jobs
     .map(job => ({job, ...scoreJobForSearch(intent,job)}))
-    .filter(x=>x.eligible && x.score>0 && isDirectUrl(x.job.applyUrl,x.job.company))
+    .filter(x=>x.eligible && x.score>0 && isDirectApplication(x.job.applyUrl,x.job.company))
     .sort((a,b)=>b.score-a.score||Date.parse(b.job.publishedAt||"")-Date.parse(a.job.publishedAt||""))
     .slice(0,limit);
 }
