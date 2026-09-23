@@ -316,7 +316,7 @@ export function matchCandidateToJob(candidate: CandidateProfile, job: Job): JobM
 
   return {
     score,
-    eligible: level.eligible && skills.fit > 0,
+    eligible: level.eligible && (skills.fit > 0 || role.fit >= .5),
     seniority,
     roleFit: role.fit,
     skillFit: skills.fit,
