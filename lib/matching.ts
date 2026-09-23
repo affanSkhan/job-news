@@ -205,9 +205,9 @@ export function detectJobSeniority(job: Pick<Job, "title"|"experience"|"type"|"d
 
   if (job.type === "internship" || /\bintern\b|internship|student placement/.test(title)) return "intern";
   if (/staff|principal|director|vice president|vp\b|head of|engineering manager|software manager|people manager|architect/.test(title)) return "staff";
-  if (/senior|sr\b|lead|tech lead|team lead/.test(title) || /5\s*\+|7\s*\+|8\s*\+|10\s*\+/.test(experience)) return "senior";
-  if (/mid[- ]level|intermediate|3\s*[-–]\s*5|2\s*[-–]\s*5/.test(combined)) return "mid";
-  if (/junior|jr\b|entry[- ]level|fresher|graduate|trainee|apprentice|new grad|0\s*[-–]\s*2|0\s*[-–]\s*1|1\s*[-–]\s*2/.test(combined)) return "entry";
+  if (/senior|sr\b|lead|tech lead|team lead/.test(title) || /5\s*\+|7\s*\+|8\s*\+|10\s*\+/.test(experience) || /\blevel\s*(?:3|4|5)\b/.test(combined) || /\b(?:iii|iv)\b/.test(title)) return "senior";
+  if (/mid[- ]level|intermediate|3\s*[-–]\s*5|2\s*[-–]\s*5/.test(combined) || /\blevel\s*2\b/.test(combined) || /\b(?:ii)\b/.test(title)) return "mid";
+  if (/junior|jr\b|entry[- ]level|fresher|graduate|trainee|apprentice|new grad|0\s*[-–]\s*2|0\s*[-–]\s*1|1\s*[-–]\s*2/.test(combined) || /\blevel\s*1\b/.test(combined) || /\b(?:i)\b/.test(title)) return "entry";
   if (/\d+\s*\+?\s*years?|years? of experience/.test(experience)) {
     const n = Number((experience.match(/\d+/)||["0"])[0]);
     if (n >= 5) return "senior";
