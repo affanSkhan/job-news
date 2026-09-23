@@ -2,13 +2,11 @@
 
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
-import {useRouter} from "next/navigation";
 import {trackAnalytics} from "./analytics";
 
 export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
   const inputRef=useRef<HTMLInputElement|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState(""),[result,setResult]=useState<any>(null),[deleted,setDeleted]=useState(false);
-  const router=useRouter();
   useEffect(()=>{
     if(result)trackAnalytics("resume_match_view",{match_count:Array.isArray(result.items)?result.items.length:0,skill_count:Array.isArray(result.skills)?result.skills.length:0,role_count:Array.isArray(result.roles)?result.roles.length:0});
   },[result]);
@@ -20,7 +18,7 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
       const r=await fetch("/api/resume",{method:"POST",body});
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data.error||"Resume upload failed.");
-      trackAnalytics("resume_upload",{file_type:file.type,file_size_kb:Math.round(file.size/1024)});setResult(data);setDeleted(false);router.refresh();
+      trackAnalytics("resume_upload",{file_type:file.type,file_size_kb:Math.round(file.size/1024)});setResult(data);setDeleted(false);
     }catch(e){setError(e instanceof Error?e.message:"Resume upload failed.")}
     finally{setBusy(false)}
   }
@@ -31,7 +29,7 @@ export default function ResumeUpload({hasResume=false}:{hasResume?:boolean}){
       const r=await fetch("/api/resume",{method:"DELETE"});
       const data=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(data.error||"Could not remove your resume profile.");
-      setDeleted(true);setResult(null);router.refresh();
+      setDeleted(true);setResult(null);
     }catch(e){setError(e instanceof Error?e.message:"Could not remove your resume profile.")}
     finally{setBusy(false)}
   }
