@@ -3,41 +3,57 @@ import fs from "node:fs/promises";
 import {getCurrentUser,ensureProfile} from "../../../lib/current-user";
 import {getDb} from "../../../lib/db";
 import {parseResume} from "../../../lib/resume-parser";
-import {isDirectApplication,applicationDestination} from "../../../lib/application";import {canonicalApplicationUrl} from "../../../lib/jobs";
+import {isDirectApplication} from "../../../lib/application";
+import {canonicalApplicationUrl} from "../../../lib/jobs";
+import {buildCandidateProfile,rankJobsForCandidate} from "../../../lib/matching";
+import type {Job} from "../../../lib/jobs";
 
 export const runtime="nodejs";
 export const maxDuration=30;
 
-function dedupeResumeRows(rows:any[]){const map=new Map<string,any>();for(const row of rows){const key=canonicalApplicationUrl(String(row.apply_url||""))||("fallback:"+String(row.title||"")+"|"+String(row.company_name||"")+"|"+String(row.location||"")).toLowerCase();const prev=map.get(key);if(!prev){map.set(key,row);continue}const prevUnknown=/^unknown company$/i.test(String(prev.company_name||""));const rowKnown=!/^unknown company$/i.test(String(row.company_name||""));if(rowKnown&&!prevUnknown)map.set(key,row)}return [...map.values()]}
-
-function scoreJob(job:any,skills:string[],roles:string[]){
-  const jobSkills=Array.isArray(job.skills)?job.skills.map((x:any)=>String(x).toLowerCase()):[];
-  const wantedSkills=[...new Set(skills.map(x=>String(x).toLowerCase()))];
-  const matched=wantedSkills.filter(x=>jobSkills.includes(x));
-  const title=String(job.title||"").toLowerCase();
-  const company=String(job.company_name||"").toLowerCase();
-  const roleHits=roles.filter(r=>title.includes(String(r).toLowerCase())).length;
-  const skill=jobSkills.length?Math.min(1,matched.length/Math.max(3,Math.min(jobSkills.length,10))):0;
-  const role=roles.length?Math.min(1,roleHits/Math.min(2,roles.length)):0;
-  const published=Date.parse(job.published_at||job.updated_at||"");
-  const age=Number.isFinite(published)?Math.max(0,(Date.now()-published)/86400000):30;
-  const freshness=age<=2?1:age<=7?.75:age<=30?.45:.2;
-  const direct=isDirectApplication(String(job.apply_url||""),String(job.company_name||""));
-  const app=direct?"employer":applicationDestination(String(job.apply_url||""),String(job.company_name||""));
-  const score=.45*skill+.25*role+.1*freshness+.2*(direct?1:0);
-  const reason=matched.length
-    ? "Matches your "+matched.slice(0,4).join(", ")+" skills."+(roleHits?" The role title also aligns with your target roles.":"")
-    : roleHits
-      ? "The role title aligns with your target roles."
-      : "Relevant fresh opportunity surfaced from the live job index.";
+function normalizeDbJob(row:any):Job{
   return {
-    ...job,
-    score:Math.max(0,Math.min(1,score)),
-    application_type:app,
-    direct_application:direct,
-    matched_skills:matched.slice(0,8),
-    reason
+    id:String(row.id||""),
+    slug:String(row.slug||""),
+    title:String(row.title||"Untitled opportunity"),
+    company:String(row.company_name||"Unknown company"),
+    description:String(row.description||""),
+    location:String(row.location||"Location not specified"),
+    workMode:["remote","hybrid","onsite","unknown"].includes(String(row.work_mode))?row.work_mode:"unknown",
+    type:["full-time","part-time","contract","internship","fellowship","other"].includes(String(row.employment_type))?row.employment_type:"other",
+    salary:String(row.salary_text||"Not disclosed"),
+    salaryMin:typeof row.salary_min==="number"?row.salary_min:undefined,
+    salaryMax:typeof row.salary_max==="number"?row.salary_max:undefined,
+    currency:typeof row.currency==="string"?row.currency:undefined,
+    skills:Array.isArray(row.skills)?row.skills.map(String):[],
+    category:String(row.category||"Other"),
+    experience:String(row.experience||"Not specified"),
+    publishedAt:String(row.published_at||""),
+    updatedAt:String(row.updated_at||""),
+    sourceName:String(row.source_name||""),
+    sourceUrl:String(row.source_url||""),
+    applyUrl:String(row.apply_url||""),
+    verified:Boolean(row.verified),
+    freshness:["today","this-week","older"].includes(String(row.freshness))?row.freshness:"older",
+    tags:Array.isArray(row.tags)?row.tags.map(String):[],
+    aiSummary:typeof row.ai_summary==="string"?row.ai_summary:undefined,
+    aiHighlights:Array.isArray(row.ai_highlights)?row.ai_highlights.map(String):[],
+    companyId:row.company_id?String(row.company_id):undefined,
+    status:String(row.status||"active")
   };
+}
+
+function dedupeResumeRows(rows:Job[]){
+  const map=new Map<string,Job>();
+  for(const row of rows){
+    const key=(canonicalApplicationUrl(String(row.applyUrl||""))||("fallback:"+String(row.title||"")+"|"+String(row.company||"")+"|"+String(row.location||""))).toLowerCase();
+    const prev=map.get(key);
+    if(!prev){map.set(key,row);continue}
+    const prevUnknown=/^unknown company$/i.test(String(prev.company||""));
+    const rowKnown=!/^unknown company$/i.test(String(row.company||""));
+    if(rowKnown&&!prevUnknown)map.set(key,row);
+  }
+  return [...map.values()];
 }
 
 export async function POST(req:Request){
@@ -46,15 +62,14 @@ export async function POST(req:Request){
   if(!(value instanceof File))return NextResponse.json({error:"Choose a resume file."},{status:400});
   if(value.size>5*1024*1024)return NextResponse.json({error:"Resume must be 5 MB or smaller."},{status:413});
   const allowed=["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document","text/plain"];
-  if(!allowed.includes(value.type))return NextResponse.json({error:"Upload PDF, DOCX, or TXT."},{status:415});
+  if(!allowed.includes(value.type))return NextResponse.json({error:"Upload PDF, DOCX or TXT."},{status:415});
 
   const sql=getDb();
 
   try{
     const parsed=await parseResume(Buffer.from(await value.arrayBuffer()),value.type);
+    const candidate=buildCandidateProfile({text:parsed.text,skills:parsed.skills,roles:parsed.roles});
 
-    // Authentication is optional here. Anonymous visitors get matches immediately;
-    // signed-in users also keep the extracted profile for their private Radar.
     const user=await getCurrentUser().catch(()=>null);
     let profileStored=false;
     if(user && sql){
@@ -64,27 +79,36 @@ export async function POST(req:Request){
         const existingRoles=Array.isArray(profile?.desired_titles)?profile.desired_titles.map(String):[];
         const skills=[...new Set([...existingSkills,...parsed.skills])].slice(0,60);
         const roles=[...new Set([...existingRoles,...parsed.roles])].slice(0,15);
-        const profileText=[String(profile?.profile_text||""),parsed.summary,`Skills: ${skills.join(", ")}`,`Target roles: ${roles.join(", ")}`].filter(Boolean).join("\n").slice(0,14000);
+        const profileText=[
+          String(profile?.profile_text||""),
+          parsed.summary,
+          "Skills: "+skills.join(", "),
+          "Target roles: "+roles.join(", ")
+        ].filter(Boolean).join("\n").slice(0,14000);
+        const resumeProfile=JSON.stringify({
+          headline:parsed.headline,summary:parsed.summary,skills:parsed.skills,roles:parsed.roles,
+          roleFamilies:candidate.roleFamilies,candidateLevel:candidate.level,
+          yearsExperience:candidate.yearsExperience,locations:candidate.locations
+        });
         await sql.query(
           "UPDATE public.profiles SET headline=COALESCE(NULLIF(headline,''),$1),desired_titles=$2,skills=$3,profile_text=$4,resume_text=$5,resume_filename=$6,resume_skills=$7,resume_roles=$8,resume_profile=$9::jsonb,resume_uploaded_at=now(),updated_at=now(),embedding=NULL WHERE id=$10",
-          [parsed.headline||"",roles,skills,profileText,parsed.text,value.name,parsed.skills,parsed.roles,JSON.stringify({headline:parsed.headline,summary:parsed.summary,skills:parsed.skills,roles:parsed.roles}),user.id]
+          [parsed.headline||"",roles,skills,profileText,parsed.text,value.name,parsed.skills,parsed.roles,resumeProfile,user.id]
         );
         profileStored=true;
       }catch{
-        // Matching must remain available even when optional account persistence fails.
+        // Resume matching remains available anonymously even when persistence fails.
       }
     }
 
-    let rows:any[]=[];
+    let rows:Job[]=[];
     if(sql){
       try{
-        rows=await sql.query(
-          `SELECT j.id AS job_id,j.title,j.company_name,j.slug,j.location,j.work_mode,j.employment_type,j.salary_text,j.skills,j.source_name,j.apply_url,j.verified,j.published_at,j.updated_at
-           FROM public.jobs j
-           WHERE j.status='active' AND coalesce(j.published_at,j.updated_at)>=now()-interval '90 days'
-           ORDER BY coalesce(j.published_at,j.updated_at) DESC NULLS LAST
-           LIMIT 1500`
+        const dbRows=await sql.query(
+          "SELECT id,slug,title,company_name,description,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status "+
+          "FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '90 days' "+
+          "ORDER BY coalesce(published_at,updated_at) DESC NULLS LAST LIMIT 4000"
         );
+        rows=dbRows.map(normalizeDbJob);
       }catch(error){
         console.warn("Resume matching database unavailable; using public job cache.",error instanceof Error?error.message:String(error));
       }
@@ -92,42 +116,36 @@ export async function POST(req:Request){
 
     if(!rows.length){
       const cache=JSON.parse(await fs.readFile("data/public-jobs.json","utf8"));
-      rows=cache
+      rows=Array.isArray(cache)?cache
         .filter((job:any)=>job?.status==="active" && job?.applyUrl)
-        .slice(0,1500)
-        .map((job:any)=>({
-          job_id:job.id,
-          title:job.title,
-          company_name:job.company,
-          slug:job.slug,
-          location:job.location,
-          work_mode:job.workMode,
-          employment_type:job.type,
-          salary_text:job.salary,
-          skills:job.skills,
-          source_name:job.sourceName,
-          apply_url:job.applyUrl,
-          verified:job.verified,
-          published_at:job.publishedAt,
-          updated_at:job.updatedAt
-        }));
+        .slice(0,4000)
+        .map((job:any)=>normalizeDbJob({
+          id:job.id,slug:job.slug,title:job.title,company_name:job.company,description:job.description,
+          location:job.location,work_mode:job.workMode,employment_type:job.type,salary_text:job.salary,
+          salary_min:job.salaryMin,salary_max:job.salaryMax,currency:job.currency,skills:job.skills,
+          category:job.category,experience:job.experience,published_at:job.publishedAt,updated_at:job.updatedAt,
+          source_name:job.sourceName,source_url:job.sourceUrl,apply_url:job.applyUrl,verified:job.verified,
+          freshness:job.freshness,tags:job.tags,ai_summary:job.aiSummary,ai_highlights:job.aiHighlights,
+          company_id:job.companyId,status:job.status
+        }))
+        :[];
     }
 
-    const items=dedupeResumeRows(rows)
-      .map((job:any)=>scoreJob(job,parsed.skills,parsed.roles))
-      .filter((job:any)=>job.direct_application && job.score>0)
-      .sort((a:any,b:any)=>b.score-a.score)
-      .slice(0,24);
+    rows=dedupeResumeRows(rows).filter(job=>isDirectApplication(job.applyUrl,job.company));
+    const ranked=rankJobsForCandidate(candidate,rows,24);
+    const items=ranked.map(({job,match})=>({
+      job_id:job.id,title:job.title,company_name:job.company,slug:job.slug,location:job.location,
+      work_mode:job.workMode,employment_type:job.type,salary_text:job.salary,skills:job.skills,
+      source_name:job.sourceName,apply_url:job.applyUrl,verified:job.verified,published_at:job.publishedAt,
+      updated_at:job.updatedAt,score:match.score,application_type:"employer",direct_application:true,
+      matched_skills:match.matchedSkills,missing_skills:match.missingSkills,role_families:match.matchedFamilies,
+      seniority:match.seniority,seniority_fit:match.seniorityFit,reason:match.reasons.slice(0,3).join(" ")
+    }));
 
     return NextResponse.json({
-      ok:true,
-      filename:value.name,
-      headline:parsed.headline,
-      skills:parsed.skills,
-      roles:parsed.roles,
-      anonymous:true,
-      profileStored,
-      items
+      ok:true,filename:value.name,headline:parsed.headline,skills:parsed.skills,roles:parsed.roles,
+      roleFamilies:candidate.roleFamilies,candidateLevel:candidate.level,yearsExperience:candidate.yearsExperience,
+      locations:candidate.locations,anonymous:true,profileStored,items
     });
   }catch(error){
     return NextResponse.json({error:error instanceof Error?error.message:"Could not process this resume."},{status:422});
