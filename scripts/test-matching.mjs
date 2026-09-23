@@ -72,6 +72,10 @@ const remoteAi=makeJob({
   workMode:"remote",location:"Remote - India",experience:"Entry level",
   skills:["Python","RAG","LLM","LangChain"]
 });
+const level1=makeJob({id:"level1",slug:"software-engineer-i",title:"Software Engineer I",experience:"Entry level"});
+const level2=makeJob({id:"level2",slug:"software-engineer-ii",title:"Software Engineer II",experience:"2-4 years"});
+const level3=makeJob({id:"level3",slug:"software-engineer-iii",title:"Software Engineer III",experience:"5+ years"});
+
 const unrelated=makeJob({
   id:"designer",slug:"product-designer",title:"Product Designer",
   category:"Design",experience:"0-2 years",skills:["Figma","UX","UI"]
@@ -79,6 +83,9 @@ const unrelated=makeJob({
 
 assert.equal(detectJobSeniority(senior),"senior");
 assert.equal(detectJobSeniority(principal),"staff");
+assert.equal(detectJobSeniority(level1),"entry");
+assert.equal(detectJobSeniority(level2),"mid");
+assert.equal(detectJobSeniority(level3),"senior");
 const ranked=rankJobsForCandidate(candidate,[senior,seniorStaff,principal,junior,intern,remoteAi,unrelated],10);
 const ids=ranked.map(x=>x.job.id);
 assert(!ids.includes("senior"),"senior jobs must be excluded for a student candidate");
