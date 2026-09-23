@@ -8,10 +8,6 @@ import AdSlot from "../components/ad-slot";
 
 const INDIA_TERMS=/india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i;
 
-function match(j:Job,q:string){
-  if(!q)return true;
-  return[j.title,j.company,j.location,j.category,j.experience,j.skills.join(" "),j.description].join(" ").toLowerCase().includes(q.toLowerCase());
-}
 function categoryMatch(j:Job,value:string){
   if(!value)return true;
   const s=(j.category+" "+j.title+" "+j.skills.join(" ")).toLowerCase();
@@ -56,7 +52,6 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
   const ranked=q?(await semanticSearch(q)).map(x=>x.job):await getActiveJobsAsync();
   const all=dedupeJobs(ranked)
     .filter(j=>isDirectApplication(j.applyUrl,j.company))
-    .filter(j=>match(j,q))
     .filter(j=>!type||j.type===type)
     .filter(j=>!mode||j.workMode===mode)
     .filter(j=>locationMatch(j.location,loc))
