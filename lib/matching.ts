@@ -462,7 +462,7 @@ export function rankJobsForSearch(query: string, jobs: Job[], limit=100) {
   const intent = parseSearchIntent(query);
   return jobs
     .map(job => ({job, ...scoreJobForSearch(intent,job)}))
-    .filter(x=>x.eligible && x.score>0)
+    .filter(x=>x.eligible && x.score>0 && isDirectUrl(x.job.applyUrl,x.job.company))
     .sort((a,b)=>b.score-a.score||Date.parse(b.job.publishedAt||"")-Date.parse(a.job.publishedAt||""))
     .slice(0,limit);
 }
