@@ -2,5 +2,8 @@
 data/jobs.json
 data/web-discovered-jobs.json
 
+# Netlify local/deploy artifacts
+.netlify/
+
 # Next.js
 .next/
