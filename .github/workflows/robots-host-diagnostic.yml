@@ -1,0 +1,37 @@
+name: Robots Host Diagnostic
+
+on:
+  push:
+    branches: ["diagnostic/robots-hosts-2026-09-25"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Jobs host
+        run: |
+          set -e
+          for ua in "Googlebot/2.1" "Google-InspectionTool/1.0"; do
+            echo "=== JOBS ROBOTS: $ua ==="
+            curl -sS --max-time 30 --connect-timeout 10 --retry 2 --retry-all-errors -A "$ua" -D /tmp/h1 -o /tmp/b1 https://jobs.affan.tech/robots.txt
+            cat /tmp/h1
+            cat /tmp/b1
+            echo
+          done
+      - name: Apex host
+        run: |
+          echo "=== APEX ROBOTS ==="
+          curl -sS --max-time 30 --connect-timeout 10 --retry 2 --retry-all-errors -A "Googlebot/2.1" -D /tmp/h2 -o /tmp/b2 https://affan.tech/robots.txt || true
+          cat /tmp/h2 || true
+          cat /tmp/b2 || true
+          echo
+      - name: Jobs page
+        run: |
+          echo "=== JOBS PAGE ==="
+          curl -sS --max-time 30 --connect-timeout 10 --retry 2 --retry-all-errors -A "Google-InspectionTool/1.0" -D /tmp/h3 -o /tmp/b3 https://jobs.affan.tech/jobs
+          cat /tmp/h3
+          grep -oi '<title>[^<]*</title>' /tmp/b3 | head -1 || true
