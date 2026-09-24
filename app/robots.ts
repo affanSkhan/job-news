@@ -8,7 +8,6 @@ export default function robots():MetadataRoute.Robots{
       allow:"/",
       disallow:["/api/","/admin","/account","/auth"]
     },
-    sitemap:SITE_URL+"/sitemap.xml",
-    host:SITE_URL
+    sitemap:SITE_URL+"/sitemap.xml"
   };
 }
