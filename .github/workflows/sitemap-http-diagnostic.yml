@@ -1,0 +1,55 @@
+name: Sitemap HTTP Diagnostic
+
+on:
+  push:
+    branches: ["diagnostic/sitemap-http-2026-09-25"]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: DNS
+        run: |
+          echo "=== DNS ==="
+          getent hosts jobs.affan.tech || true
+          echo "=== CNAME ==="
+          dig +short CNAME jobs.affan.tech || true
+          echo "=== A/AAAA ==="
+          dig +short A jobs.affan.tech || true
+          dig +short AAAA jobs.affan.tech || true
+      - name: Sitemap HEAD
+        run: |
+          echo "=== HEAD ==="
+          curl -sSIL --max-time 30 --connect-timeout 10 --retry 3 --retry-all-errors https://jobs.affan.tech/sitemap.xml | tee /tmp/headers.txt
+      - name: Sitemap GET
+        run: |
+          echo "=== GET ==="
+          curl -sS --max-time 90 --connect-timeout 15 --retry 3 --retry-all-errors -D /tmp/get-headers.txt https://jobs.affan.tech/sitemap.xml -o /tmp/sitemap.xml
+          echo "--- headers ---"
+          cat /tmp/get-headers.txt
+          echo "--- bytes ---"
+          wc -c /tmp/sitemap.xml
+          echo "--- first 500 chars ---"
+          head -c 500 /tmp/sitemap.xml || true
+          echo
+          echo "--- XML sanity ---"
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          p=Path('/tmp/sitemap.xml')
+          try:
+              root=ET.fromstring(p.read_bytes())
+              print("XML_OK", root.tag)
+              print("URL_COUNT", len(root))
+          except Exception as e:
+              print("XML_ERROR", repr(e))
+              raise
+          PY
+      - name: Robots GET
+        run: |
+          echo "=== ROBOTS ==="
+          curl -sS --max-time 30 --connect-timeout 10 --retry 3 --retry-all-errors -D - https://jobs.affan.tech/robots.txt | head -100
