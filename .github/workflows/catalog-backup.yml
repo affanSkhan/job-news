@@ -2,6 +2,11 @@ name: RolePilot Catalog Backup
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/catalog-backup.yml"
+      - "scripts/backup-public-catalog.mjs"
   schedule:
     - cron: "17 */12 * * *"
 
