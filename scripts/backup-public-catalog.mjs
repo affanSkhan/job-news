@@ -5,8 +5,55 @@ const url=process.env.DATABASE_URL_BACKUP;
 if(!url)throw new Error("DATABASE_URL_BACKUP is required");
 
 const db=neon(url);
-const jobs=JSON.parse(await fs.readFile("data/public-jobs.json","utf8"));
-const meta=JSON.parse(await fs.readFile("data/public-jobs-meta.json","utf8").catch(()=>"{\"generatedAt\":null,\"count\":"+jobs.length+"}"));
+
+/**
+ * PostgreSQL rejects JSON strings containing lone UTF-16 surrogate code units.
+ * Upstream job feeds can contain malformed emoji escapes such as \\ud83e.
+ * Normalize every string to well-formed Unicode before serializing payloads.
+ */
+function toWellFormed(value){
+  if(typeof value==="string"){
+    let out="";
+    for(let i=0;i<value.length;i++){
+      const code=value.charCodeAt(i);
+      if(code>=0xd800&&code<=0xdbff){
+        const next=i+1<value.length?value.charCodeAt(i+1):0;
+        if(next>=0xdc00&&next<=0xdfff){out+=value[i]+value[i+1];i++;}
+        else out+="\uFFFD";
+      }else if(code>=0xdc00&&code<=0xdfff){
+        out+="\uFFFD";
+      }else out+=value[i];
+    }
+    return out;
+  }
+  if(Array.isArray(value))return value.map(toWellFormed);
+  if(value&&typeof value==="object")return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,toWellFormed(v)]));
+  return value;
+}
+
+function countMalformedSurrogates(value){
+  if(typeof value==="string"){
+    let count=0;
+    for(let i=0;i<value.length;i++){
+      const code=value.charCodeAt(i);
+      if(code>=0xd800&&code<=0xdbff){
+        const next=i+1<value.length?value.charCodeAt(i+1):0;
+        if(next>=0xdc00&&next<=0xdfff)i++;
+        else count++;
+      }else if(code>=0xdc00&&code<=0xdfff)count++;
+    }
+    return count;
+  }
+  if(Array.isArray(value))return value.reduce((n,v)=>n+countMalformedSurrogates(v),0);
+  if(value&&typeof value==="object")return Object.values(value).reduce((n,v)=>n+countMalformedSurrogates(v),0);
+  return 0;
+}
+const rawJobs=JSON.parse(await fs.readFile("data/public-jobs.json","utf8"));
+const malformedCount=countMalformedSurrogates(rawJobs);
+const jobs=toWellFormed(rawJobs);
+if(malformedCount>0) console.warn(`Normalized ${malformedCount} malformed Unicode surrogate code unit(s) before PostgreSQL backup.`);
+const metaRaw=JSON.parse(await fs.readFile("data/public-jobs-meta.json","utf8").catch(()=>"{\"generatedAt\":null,\"count\":"+jobs.length+"}"));
+const meta=toWellFormed(metaRaw);
 const now=new Date().toISOString();
 
 async function setup(){
