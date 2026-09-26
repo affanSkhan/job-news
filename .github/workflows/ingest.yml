@@ -95,33 +95,29 @@ jobs:
           console.log(`Validated ${jobs.length} public jobs.`);
           NODE
 
-      - name: Publish public job cache
+      - name: Publish runtime catalog branch
         if: steps.ingest.outcome == 'success'
         run: |
           set -euo pipefail
+          test -s data/public-jobs.json
+          test -s data/public-jobs-meta.json
+
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          mkdir -p /tmp/rolepilot-runtime-cache
+          cp data/public-jobs.json /tmp/rolepilot-runtime-cache/public-jobs.json
+          cp data/public-jobs-meta.json /tmp/rolepilot-runtime-cache/public-jobs-meta.json
+
+          git fetch origin main
+          git stash push --include-untracked -m "rolepilot-generated"
+
+          git checkout --orphan rolepilot-runtime-cache
+          git rm -rf .
+          cp /tmp/rolepilot-runtime-cache/public-jobs.json data/public-jobs.json
+          cp /tmp/rolepilot-runtime-cache/public-jobs-meta.json data/public-jobs-meta.json
           git add data/public-jobs.json data/public-jobs-meta.json
+          git commit -m "chore: refresh runtime catalog"
+          git push --force origin HEAD:rolepilot-runtime-cache
 
-          if git diff --cached --quiet; then
-            echo "No generated cache changes."
-            exit 0
-          fi
-
-          git commit -m "chore: refresh public job cache [skip ci]"
-
-          for attempt in 1 2 3; do
-            git fetch origin main
-            if git rebase origin/main && git push origin HEAD:main; then
-              echo "Published public job cache."
-              exit 0
-            fi
-            echo "Cache publish attempt $attempt failed; retrying..."
-            git rebase --abort || true
-            git reset --soft origin/main
-            git commit -m "chore: refresh public job cache [skip ci]" || true
-            sleep 5
-          done
-
-          echo "Unable to publish the public job cache after 3 attempts."
-          exit 1
+          echo "Published runtime catalog branch."
