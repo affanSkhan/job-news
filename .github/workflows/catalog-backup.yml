@@ -2,13 +2,8 @@ name: RolePilot Catalog Backup
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/catalog-backup.yml"
-      - "scripts/backup-public-catalog.mjs"
   schedule:
-    - cron: "17 */12 * * *"
+    - cron: "47 1 * * *"
 
 permissions:
   contents: read
@@ -20,17 +15,24 @@ concurrency:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+
+      - name: Verify public catalog
+        run: |
+          test -s data/public-jobs.json
+          node --input-type=module -e 'const fs=require("node:fs"); const j=JSON.parse(fs.readFileSync("data/public-jobs.json","utf8")); if(!Array.isArray(j)||j.length<100) process.exit(1); console.log("Catalog rows:",j.length)'
+
+      - name: Archive catalog
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-          cache: npm
-      - run: npm install --no-audit --no-fund
-      - name: Backup public job catalog
-        run: node scripts/backup-public-catalog.mjs
-        env:
-          DATABASE_URL_BACKUP: ${{ secrets.DATABASE_URL_BACKUP }}
+          name: rolepilot-public-catalog-${{ github.run_id }}
+          path: |
+            data/public-jobs.json
+            data/public-jobs-meta.json
+          retention-days: 7
+          compression-level: 9
