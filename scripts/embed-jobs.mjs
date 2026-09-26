@@ -1,8 +1,8 @@
 import {neon} from "@neondatabase/serverless";
-import {pipeline} from "@huggingface/transformers";
+import {pipeline,env} from "@huggingface/transformers";
 const db=process.env.DATABASE_URL?neon(process.env.DATABASE_URL):null;
 if(!db){console.log("Semantic embedding worker skipped: DATABASE_URL missing.");process.exit(0)}
-const model=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";
+const model=process.env.LOCAL_EMBEDDING_MODEL||"Xenova/all-MiniLM-L6-v2";env.cacheDir=".cache/transformers";
 const batchSize=Math.max(50,Number(process.env.EMBED_BATCH||300));
 const dim=1536;
 const extractor=await pipeline("feature-extraction",model);
