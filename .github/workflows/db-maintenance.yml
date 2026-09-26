@@ -31,6 +31,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Download current runtime catalog
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --connect-timeout 10 --max-time 60 \
+            https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json \
+            -o data/public-jobs.json
+          test -s data/public-jobs.json
+
       - name: Sync public catalog to secondary Neon
         run: node scripts/sync-public-catalog.mjs
         env:
