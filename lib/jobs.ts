@@ -13,15 +13,40 @@ export function dedupeJobs(input:Job[]){const map=new Map<string,Job>();for(cons
 function normalize(j:any):Job{return {...j,id:String(j.id||""),title:typeof j.title==="string"&&j.title.trim()?j.title:"Untitled opportunity",slug:typeof j.slug==="string"&&j.slug.trim()?j.slug:slugify(String(j.title||"opportunity")),company:typeof j.company==="string"&&j.company.trim()?j.company:"Unknown company",description:cleanJobText(String(j.description||"")),location:typeof j.location==="string"&&j.location.trim()?j.location:"Location not specified",workMode:["remote","hybrid","onsite","unknown"].includes(j.workMode)?j.workMode:"unknown",type:["full-time","part-time","contract","internship","fellowship","other"].includes(j.type)?j.type:"other",salary:typeof j.salary==="string"?j.salary:"Not disclosed",salaryMin:typeof j.salaryMin==="number"?j.salaryMin:undefined,salaryMax:typeof j.salaryMax==="number"?j.salaryMax:undefined,currency:typeof j.currency==="string"?j.currency:undefined,skills:Array.isArray(j.skills)?j.skills.map(String).filter(Boolean):[],category:typeof j.category==="string"&&j.category.trim()?j.category:"Other",experience:typeof j.experience==="string"?j.experience:"Not specified",publishedAt:dateString(j.publishedAt),updatedAt:dateString(j.updatedAt),sourceName:typeof j.sourceName==="string"?j.sourceName:"Unknown source",sourceUrl:typeof j.sourceUrl==="string"?j.sourceUrl:"",applyUrl:typeof j.applyUrl==="string"?j.applyUrl:j.sourceUrl||"",verified:Boolean(j.verified),freshness:["today","this-week","older"].includes(j.freshness)?j.freshness:"older",tags:Array.isArray(j.tags)?j.tags.map(String).filter(Boolean):[],aiSummary:typeof j.aiSummary==="string"?cleanJobText(j.aiSummary):undefined,aiHighlights:Array.isArray(j.aiHighlights)?j.aiHighlights.map((x:any)=>cleanJobText(String(x))).filter(Boolean):[],companyId:typeof j.companyId==="string"?j.companyId:undefined,status:typeof j.status==="string"?j.status:"active"}}
 function row(r:any):Job{return normalize({id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:"",location:r.location,workMode:r.work_mode,type:r.employment_type,salary:r.salary_text,salaryMin:r.salary_min,salaryMax:r.salary_max,currency:r.currency,skills:r.skills,category:r.category,experience:r.experience,publishedAt:r.published_at,updatedAt:r.updated_at,sourceName:r.source_name,sourceUrl:r.source_url,applyUrl:r.apply_url,verified:r.verified,freshness:r.freshness,tags:r.tags,aiSummary:r.ai_summary,aiHighlights:r.ai_highlights,companyId:r.company_id,status:r.status})}
 const PUBLIC_CACHE=path.join(process.cwd(),"data","public-jobs.json");
-let cache:Job[]|null=null;
+const REMOTE_PUBLIC_CACHE_URL=process.env.ROLEPILOT_PUBLIC_CACHE_URL||"https://raw.githubusercontent.com/affanSkhan/job-news/main/data/public-jobs.json";
+const REMOTE_CACHE_TTL_MS=5*60*1000;
+let localCache:Job[]|null=null;
+let remoteCache:Job[]|null=null;
+let remoteCacheLoadedAt=0;
+
 function readPublicCache():Job[]{
-  if(cache)return cache;
+  if(localCache)return localCache;
   try{
     const raw=fs.readFileSync(PUBLIC_CACHE,"utf8");
     const parsed=JSON.parse(raw);
-    cache=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
-    return cache;
+    localCache=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
+    return localCache;
   }catch{return []}
+}
+
+async function readPublicCacheAsync():Promise<Job[]>{
+  if(remoteCache&&Date.now()-remoteCacheLoadedAt<REMOTE_CACHE_TTL_MS)return remoteCache;
+  try{
+    const init:any={
+      headers:{"accept":"application/json","user-agent":"RolePilotRuntime/1.0"},
+      next:{revalidate:300}
+    };
+    const response=await fetch(REMOTE_PUBLIC_CACHE_URL,init);
+    if(!response.ok)throw new Error("Public cache fetch failed: "+response.status);
+    const parsed=await response.json();
+    const jobs=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
+    if(jobs.length<100)throw new Error("Public cache is unexpectedly small.");
+    remoteCache=jobs;
+    remoteCacheLoadedAt=Date.now();
+    return jobs;
+  }catch{
+    return readPublicCache();
+  }
 }
 function fallbackStats(){
   const jobs=readPublicCache();
@@ -35,17 +60,24 @@ function fallbackStats(){
 const JOB_DETAIL_COLUMNS="id,slug,title,company_name,description,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
 const DB_CATALOG_READS=process.env.ROLEPILOT_DB_CATALOG_READS==="1";
 export async function getActiveJobStatsAsync(){
+  const cached=await readPublicCacheAsync();
+  const fallback={
+    active:cached.length,
+    today:cached.filter(j=>j.freshness==="today").length,
+    internships:cached.filter(j=>j.type==="internship").length,
+    remote:cached.filter(j=>j.workMode==="remote").length
+  };
   if(!DB_CATALOG_READS)return fallbackStats();
   const sql=getDb();if(!sql)return fallbackStats();
   try{
     const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);
     const r=rows[0]||{};
     return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}
-  }catch{return fallbackStats()}
+  }catch{return fallback}
 }
 export async function getActiveJobsAsync(limit=5000){
   const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));
-  const cached=readPublicCache();
+  const cached=await readPublicCacheAsync();
   if(cached.length)return cached.slice(0,safeLimit);
   if(!DB_CATALOG_READS)return [];
   const sql=getDb();if(!sql)return [];
@@ -55,7 +87,7 @@ export async function getActiveJobsAsync(limit=5000){
   }catch{return []}
 }
 export async function getJobAsync(slug:string){
-  const cached=readPublicCache().find(j=>j.slug===slug);
+  const cached=(await readPublicCacheAsync()).find(j=>j.slug===slug);
   if(cached)return cached;
   if(!DB_CATALOG_READS)return undefined;
   const sql=getDb();if(!sql)return undefined;
