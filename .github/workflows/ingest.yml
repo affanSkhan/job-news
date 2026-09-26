@@ -109,9 +109,6 @@ jobs:
           cp data/public-jobs.json /tmp/rolepilot-runtime-cache/public-jobs.json
           cp data/public-jobs-meta.json /tmp/rolepilot-runtime-cache/public-jobs-meta.json
 
-          git fetch origin main
-          git stash push --include-untracked -m "rolepilot-generated"
-
           git checkout --orphan rolepilot-runtime-cache
           git rm -rf .
           cp /tmp/rolepilot-runtime-cache/public-jobs.json data/public-jobs.json
