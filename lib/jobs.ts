@@ -67,8 +67,8 @@ export async function getActiveJobStatsAsync(){
     internships:cached.filter(j=>j.type==="internship").length,
     remote:cached.filter(j=>j.workMode==="remote").length
   };
-  if(!DB_CATALOG_READS)return fallbackStats();
-  const sql=getDb();if(!sql)return fallbackStats();
+  if(!DB_CATALOG_READS)return fallback;
+  const sql=getDb();if(!sql)return fallback;
   try{
     const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);
     const r=rows[0]||{};
