@@ -1,0 +1,37 @@
+name: RolePilot Database Maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rolepilot-db-maintenance
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout latest public catalog
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Sync public catalog to secondary Neon
+        run: node scripts/sync-public-catalog.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
