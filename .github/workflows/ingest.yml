@@ -3,103 +3,112 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/ingest.yml","package.json","package-lock.json","scripts/**","lib/**","app/**","data/**","db/migrations/**"]
+    paths:
+      - ".github/workflows/ingest.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/**"
+      - "lib/**"
+      - "app/**"
+      - "data/sources.json"
+      - "data/ats-sources.json"
+      - "db/migrations/**"
   schedule:
     - cron: "*/30 * * * *"
+
 permissions:
   contents: write
+
 concurrency:
-  group: jobnews-intelligence
+  group: rolepilot-intelligence
   cancel-in-progress: true
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-        with: {fetch-depth: 1}
-      - uses: actions/setup-node@v4
-        with: {node-version: 20, cache: npm}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Validate optimized hero asset
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache Transformers.js models
+        uses: actions/cache@v4
+        with:
+          path: .cache/transformers
+          key: rolepilot-transformers-${{ runner.os }}-${{ hashFiles('scripts/ai-enrich.mjs', 'scripts/embed-jobs.mjs', 'package-lock.json') }}
+          restore-keys: |
+            rolepilot-transformers-${{ runner.os }}-
+
+      - name: Validate hero asset
         run: test -s public/rolepilot-hero.webp
-      - run: npm install --no-audit --no-fund
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Validate ingest script syntax
         run: node --check scripts/ingest.mjs
+
       - name: Production build check
         if: ${{ github.event_name != 'schedule' }}
         run: npm run build
+
       - name: Resume and role search regression suite
         if: ${{ github.event_name != 'schedule' }}
         run: npx --yes tsx scripts/test-matching.mjs
-      - name: AI web discovery
-        continue-on-error: true
-        run: npm run web:discover
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          WEB_DISCOVERY_MODEL: gpt-5.6
+
       - name: Discover fresh opportunities
         id: ingest
-        continue-on-error: true
         run: npm run ingest
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GREENHOUSE_BOARDS: ${{ secrets.GREENHOUSE_BOARDS }}
-          LEVER_SITES: ${{ secrets.LEVER_SITES }}
-          ASHBY_BOARDS: ${{ secrets.ASHBY_BOARDS }}
-      - name: Enrich new opportunities
+
+      - name: Enrich opportunities locally
         if: steps.ingest.outcome == 'success'
         run: npm run ai:enrich
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_MODEL: Qwen/Qwen3-0.6B:fastest
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_CHAT_MODEL: ${{ secrets.OPENAI_CHAT_MODEL }}
-          AI_BATCH: 250
-          AI_REWRITE: "1"
+          AI_BATCH: 20
+          AI_REWRITE: "0"
           LOCAL_AI_MODEL: Xenova/distilbart-cnn-6-6
-          LOCAL_AI_MAX: 25
-      - name: Refresh semantic indexes
+          LOCAL_AI_MAX: 20
+          ALLOW_EXTERNAL_AI: "0"
+
+      - name: Validate generated public cache
         if: steps.ingest.outcome == 'success'
-        run: npm run jobs:embed
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          EMBED_BATCH: 300
-          LOCAL_EMBEDDING_MODEL: Xenova/all-MiniLM-L6-v2
-      - name: Send eligible alerts
-        if: steps.ingest.outcome == 'success'
-        run: npm run alerts
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-      - name: Report degraded database mode
-        if: steps.ingest.outcome == 'failure'
         run: |
-          echo "::warning::Database sync failed (often due provider quota/network limits). The public JSON cache was still generated from the available sources; DB-backed enrichment, embeddings, and alerts were skipped."
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+          const jobs = JSON.parse(fs.readFileSync("data/public-jobs.json", "utf8"));
+          if (!Array.isArray(jobs) || jobs.length < 100) {
+            throw new Error("Public cache is unexpectedly small.");
+          }
+          for (const [index, job] of jobs.entries()) {
+            if (!job?.id || !job?.slug || !job?.title || !job?.company || !job?.applyUrl) {
+              throw new Error(`Invalid public job at index ${index}`);
+            }
+          }
+          console.log(`Validated ${jobs.length} public jobs.`);
+          NODE
 
       - name: Publish public job cache
-        if: always()
+        if: steps.ingest.outcome == 'success'
         run: |
           set -euo pipefail
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/public-jobs.json data/public-jobs-meta.json
-          git add -u package-lock.json
+
           if git diff --cached --quiet; then
             echo "No generated cache changes."
             exit 0
           fi
 
           git commit -m "chore: refresh public job cache [skip ci]"
-
-          # web-discover writes a local artifact that is intentionally not part
-          # of the public cache commit. Stash all remaining local changes before
-          # rebasing onto main so harmless concurrent deployments cannot block
-          # the cache publish.
-          git stash push --include-untracked -m "rolepilot-ci-generated" || true
 
           for attempt in 1 2 3; do
             git fetch origin main
