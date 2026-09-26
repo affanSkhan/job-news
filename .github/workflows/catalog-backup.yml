@@ -22,6 +22,14 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Download current runtime catalog
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --connect-timeout 10 --max-time 60 \
+            https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json \
+            -o data/public-jobs.json
+          test -s data/public-jobs.json
+
       - name: Verify public catalog
         run: |
           test -s data/public-jobs.json
