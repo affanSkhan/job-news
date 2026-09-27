@@ -14,7 +14,9 @@ on:
       - "data/ats-sources.json"
       - "db/migrations/**"
   schedule:
-    - cron: "*/30 * * * *"
+    # Offset from the top of the hour to reduce scheduler contention.
+    # Multiple triggers plus a freshness guard allow recovery from missed/delayed events.
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: write
@@ -33,13 +35,46 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Guard scheduled run by catalog freshness
+        id: freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Non-scheduled event: run ingestion."
+            exit 0
+          fi
+
+          META_URL="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json"
+          if meta="$(curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 20 "$META_URL")"; then
+            generated_at="$(printf "%s" "$meta" | node --input-type=module -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).generatedAt||""))')"
+            if [ -n "$generated_at" ]; then
+              generated_epoch="$(date -d "$generated_at" +%s 2>/dev/null || echo 0)"
+              now_epoch="$(date +%s)"
+              age=$((now_epoch - generated_epoch))
+              if [ "$generated_epoch" -gt 0 ] && [ "$age" -ge 0 ] && [ "$age" -lt 1500 ]; then
+                echo "should_run=false" >> "$GITHUB_OUTPUT"
+                echo "Runtime catalog is already fresh; skipping this redundant scheduled run."
+                exit 0
+              fi
+            fi
+          else
+            echo "::warning::Could not read runtime catalog metadata; running ingestion defensively."
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "Catalog is stale or unavailable; run ingestion."
       - name: Setup Node 20
+        if: steps.freshness.outputs.should_run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Cache Transformers.js models
+        if: steps.freshness.outputs.should_run == 'true'
         uses: actions/cache@v4
         with:
           path: .cache/transformers
@@ -48,28 +83,32 @@ jobs:
             rolepilot-transformers-${{ runner.os }}-
 
       - name: Validate hero asset
+        if: steps.freshness.outputs.should_run == 'true'
         run: test -s public/rolepilot-hero.webp
 
       - name: Install dependencies
+        if: steps.freshness.outputs.should_run == 'true'
         run: npm ci --no-audit --no-fund
 
       - name: Validate ingest script syntax
+        if: steps.freshness.outputs.should_run == 'true'
         run: node --check scripts/ingest.mjs
 
       - name: Production build check
-        if: ${{ github.event_name != 'schedule' }}
+        if: steps.freshness.outputs.should_run == 'true' && github.event_name != 'schedule'
         run: npm run build
 
       - name: Resume and role search regression suite
-        if: ${{ github.event_name != 'schedule' }}
+        if: steps.freshness.outputs.should_run == 'true' && github.event_name != 'schedule'
         run: npx --yes tsx scripts/test-matching.mjs
 
       - name: Discover fresh opportunities
         id: ingest
+        if: steps.freshness.outputs.should_run == 'true'
         run: npm run ingest
 
       - name: Enrich opportunities locally
-        if: steps.ingest.outcome == 'success'
+        if: steps.freshness.outputs.should_run == 'true' && steps.ingest.outcome == 'success'
         run: npm run ai:enrich
         env:
           AI_BATCH: 20
@@ -79,7 +118,7 @@ jobs:
           ALLOW_EXTERNAL_AI: "0"
 
       - name: Validate generated public cache
-        if: steps.ingest.outcome == 'success'
+        if: steps.freshness.outputs.should_run == 'true' && steps.ingest.outcome == 'success'
         run: |
           node --input-type=module - <<'NODE'
           import fs from "node:fs";
@@ -96,7 +135,7 @@ jobs:
           NODE
 
       - name: Publish runtime catalog branch
-        if: steps.ingest.outcome == 'success'
+        if: steps.freshness.outputs.should_run == 'true' && steps.ingest.outcome == 'success'
         run: |
           set -euo pipefail
           test -s data/public-jobs.json
