@@ -2,6 +2,11 @@ name: RolePilot Database Maintenance
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/db-maintenance.yml"
+      - "scripts/sync-public-catalog.mjs"
   schedule:
     - cron: "17 */6 * * *"
 
