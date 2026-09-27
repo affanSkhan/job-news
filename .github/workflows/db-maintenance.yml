@@ -34,12 +34,67 @@ jobs:
       - name: Download current runtime catalog
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 --connect-timeout 10 --max-time 60 \
-            https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json \
+          BASE="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data"
+          curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 60 \
+            "$BASE/public-jobs.json" \
             -o data/public-jobs.json
+          curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 \
+            "$BASE/public-jobs-meta.json" \
+            -o data/public-jobs-meta.json
           test -s data/public-jobs.json
+          test -s data/public-jobs-meta.json
+
+      - name: Validate runtime catalog
+        run: |
+          set -euo pipefail
+          node --check scripts/sync-public-catalog.mjs
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+          const jobs = JSON.parse(fs.readFileSync("data/public-jobs.json", "utf8"));
+          const meta = JSON.parse(fs.readFileSync("data/public-jobs-meta.json", "utf8"));
+          if (!Array.isArray(jobs) || jobs.length < 100) {
+            throw new Error("Runtime catalog is unexpectedly small.");
+          }
+          if (Number(meta.count || 0) < 100) {
+            throw new Error("Runtime catalog metadata is unexpectedly small.");
+          }
+          if (Number(meta.count) !== jobs.length) {
+            console.warn("Catalog/meta count mismatch:", jobs.length, meta.count);
+          }
+          console.log("Validated runtime catalog:", jobs.length);
+          NODE
 
       - name: Sync public catalog to secondary Neon
-        run: node scripts/sync-public-catalog.mjs
+        id: neon_sync
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::warning::DATABASE_URL_BACKUP is not configured; secondary Neon sync is skipped."
+            exit 0
+          fi
+
+          for attempt in 1 2 3; do
+            echo "Secondary Neon sync attempt $attempt/3"
+            if node scripts/sync-public-catalog.mjs; then
+              echo "Secondary Neon catalog sync completed."
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              delay=$((attempt * 10))
+              echo "Sync failed; retrying in ${delay}s."
+              sleep "$delay"
+            fi
+          done
+
+          echo "::warning::Secondary Neon sync failed after 3 attempts. This database is non-critical for public catalog serving; the runtime GitHub cache remains authoritative."
+          exit 1
+
+      - name: Report secondary Neon status
+        if: steps.neon_sync.outcome == 'failure'
+        run: |
+          echo "::warning::RolePilot public catalog remains available because website serving uses the runtime cache. Secondary Neon will be retried on the next maintenance run."
