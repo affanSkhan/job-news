@@ -56,7 +56,7 @@ jobs:
               if not all(job.get(k) for k in required):
                   raise SystemExit(f"Invalid public job at index {i}")
           print(f"Catalog rows: {len(jobs)}")
-          print(f"Generated at: {meta.get("generatedAt", "unknown")}")
+          print(f"Generated at: {meta.get('generatedAt', 'unknown')}")
           PY
       - name: Archive catalog
         uses: actions/upload-artifact@v4
