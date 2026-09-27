@@ -25,16 +25,39 @@ jobs:
       - name: Download current runtime catalog
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 --connect-timeout 10 --max-time 60 \
-            https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json \
+          BASE="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data"
+          curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 60 \
+            "$BASE/public-jobs.json" \
             -o data/public-jobs.json
+          curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 \
+            "$BASE/public-jobs-meta.json" \
+            -o data/public-jobs-meta.json
           test -s data/public-jobs.json
+          test -s data/public-jobs-meta.json
 
       - name: Verify public catalog
         run: |
-          test -s data/public-jobs.json
-          node --input-type=module -e 'const fs=require("node:fs"); const j=JSON.parse(fs.readFileSync("data/public-jobs.json","utf8")); if(!Array.isArray(j)||j.length<100) process.exit(1); console.log("Catalog rows:",j.length)'
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
+          jobs = json.loads(Path("data/public-jobs.json").read_text(encoding="utf-8"))
+          meta = json.loads(Path("data/public-jobs-meta.json").read_text(encoding="utf-8"))
+          if not isinstance(jobs, list) or len(jobs) < 100:
+              raise SystemExit("Public catalog is unexpectedly small.")
+          count = int(meta.get("count") or 0)
+          if count < 100:
+              raise SystemExit("Public catalog metadata is unexpectedly small.")
+          if count != len(jobs):
+              raise SystemExit(f"Catalog/meta mismatch: jobs={len(jobs)} meta={count}")
+          required = ("id", "slug", "title", "company", "applyUrl")
+          for i, job in enumerate(jobs):
+              if not all(job.get(k) for k in required):
+                  raise SystemExit(f"Invalid public job at index {i}")
+          print(f"Catalog rows: {len(jobs)}")
+          print(f"Generated at: {meta.get("generatedAt", "unknown")}")
+          PY
       - name: Archive catalog
         uses: actions/upload-artifact@v4
         with:
@@ -44,3 +67,4 @@ jobs:
             data/public-jobs-meta.json
           retention-days: 7
           compression-level: 9
+          if-no-files-found: error
