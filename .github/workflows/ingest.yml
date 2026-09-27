@@ -23,7 +23,9 @@ permissions:
 
 concurrency:
   group: rolepilot-intelligence
-  cancel-in-progress: true
+  # Never cancel a healthy ingestion just because the next recovery trigger fired.
+  # The freshness guard prevents redundant work; pending runs are automatically collapsed.
+  cancel-in-progress: false
 
 jobs:
   ingest:
