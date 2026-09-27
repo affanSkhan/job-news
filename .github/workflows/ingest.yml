@@ -14,9 +14,10 @@ on:
       - "data/ats-sources.json"
       - "db/migrations/**"
   schedule:
-    # Offset from the top of the hour to reduce scheduler contention.
-    # Multiple triggers plus a freshness guard allow recovery from missed/delayed events.
-    - cron: "7,22,37,52 * * * *"
+    # Twice daily at 9:17 AM and 9:17 PM Asia/Kolkata (12 hours apart).
+    # The 17-minute offset avoids the busiest top-of-hour scheduling window.
+    - cron: "17 9,21 * * *"
+      timezone: "Asia/Kolkata"
 
 permissions:
   contents: write
