@@ -24,6 +24,94 @@ function chunked(items, size) {
   return out;
 }
 
+
+const catalogColumnDefinitions = [
+  ["fingerprint", "text"],
+  ["slug", "text"],
+  ["title", "text NOT NULL"],
+  ["company_name", "text NOT NULL"],
+  ["description", "text NOT NULL DEFAULT ''"],
+  ["location", "text NOT NULL DEFAULT 'Location not specified'"],
+  ["work_mode", "text NOT NULL DEFAULT 'unknown'"],
+  ["employment_type", "text NOT NULL DEFAULT 'other'"],
+  ["salary_text", "text NOT NULL DEFAULT 'Not disclosed'"],
+  ["salary_min", "numeric"],
+  ["salary_max", "numeric"],
+  ["currency", "text"],
+  ["skills", "text[] NOT NULL DEFAULT '{}'"],
+  ["category", "text NOT NULL DEFAULT 'Other'"],
+  ["experience", "text NOT NULL DEFAULT 'Not specified'"],
+  ["published_at", "timestamptz"],
+  ["updated_at", "timestamptz NOT NULL DEFAULT now()"],
+  ["source_name", "text NOT NULL DEFAULT 'Unknown source'"],
+  ["source_url", "text"],
+  ["apply_url", "text"],
+  ["verified", "boolean NOT NULL DEFAULT false"],
+  ["freshness", "text NOT NULL DEFAULT 'older'"],
+  ["tags", "text[] NOT NULL DEFAULT '{}'"],
+  ["ai_summary", "text"],
+  ["ai_highlights", "text[] NOT NULL DEFAULT '{}'"],
+  ["status", "text NOT NULL DEFAULT 'active'"],
+  ["first_seen_at", "timestamptz NOT NULL DEFAULT now()"],
+  ["last_seen_at", "timestamptz NOT NULL DEFAULT now()"],
+  ["raw", "jsonb NOT NULL DEFAULT '{}'::jsonb"]
+];
+
+async function tableExists(tableName) {
+  const result = await db.query("SELECT to_regclass($1) AS relation", [tableName]);
+  return Boolean(result[0]?.relation);
+}
+
+async function ensureJobsSchema() {
+  const exists = await tableExists("public.jobs");
+
+  if (!exists) {
+    await db.query(`
+      CREATE TABLE public.jobs (
+        id text PRIMARY KEY,
+        fingerprint text UNIQUE NOT NULL,
+        slug text UNIQUE NOT NULL,
+        title text NOT NULL,
+        company_name text NOT NULL,
+        description text NOT NULL DEFAULT '',
+        location text NOT NULL DEFAULT 'Location not specified',
+        work_mode text NOT NULL DEFAULT 'unknown',
+        employment_type text NOT NULL DEFAULT 'other',
+        salary_text text NOT NULL DEFAULT 'Not disclosed',
+        salary_min numeric,
+        salary_max numeric,
+        currency text,
+        skills text[] NOT NULL DEFAULT '{}',
+        category text NOT NULL DEFAULT 'Other',
+        experience text NOT NULL DEFAULT 'Not specified',
+        published_at timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        source_name text NOT NULL DEFAULT 'Unknown source',
+        source_url text,
+        apply_url text,
+        verified boolean NOT NULL DEFAULT false,
+        freshness text NOT NULL DEFAULT 'older',
+        tags text[] NOT NULL DEFAULT '{}',
+        ai_summary text,
+        ai_highlights text[] NOT NULL DEFAULT '{}',
+        status text NOT NULL DEFAULT 'active',
+        first_seen_at timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now(),
+        raw jsonb NOT NULL DEFAULT '{}'::jsonb
+      )
+    `);
+  }
+
+  for (const [column, definition] of catalogColumnDefinitions) {
+    await db.query(
+      "ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS " + column + " " + definition
+    );
+  }
+}
+
+await ensureJobsSchema();
+const syncStartedAt = new Date().toISOString();
+
 const rows = jobs.map((j) => ({
   id: String(j.id),
   fingerprint: String(j.id),
@@ -91,17 +179,6 @@ const defs = [
   "status text"
 ].join(",");
 
-const changedText = [
-  "j.title IS DISTINCT FROM EXCLUDED.title",
-  "j.description IS DISTINCT FROM EXCLUDED.description",
-  "j.location IS DISTINCT FROM EXCLUDED.location",
-  "j.work_mode IS DISTINCT FROM EXCLUDED.work_mode",
-  "j.employment_type IS DISTINCT FROM EXCLUDED.employment_type",
-  "j.skills IS DISTINCT FROM EXCLUDED.skills",
-  "j.category IS DISTINCT FROM EXCLUDED.category",
-  "j.experience IS DISTINCT FROM EXCLUDED.experience"
-].join(" OR ");
-
 const mutableColumns = columns
   .filter((c) => !["id","fingerprint"].includes(c))
   .map((c) => c + "=EXCLUDED." + c)
@@ -111,9 +188,7 @@ const upsertSql =
   "INSERT INTO public.jobs AS j (" + columns.join(",") + ") " +
   "SELECT " + columns.join(",") + " FROM jsonb_to_recordset($1::jsonb) AS x(" + defs + ") " +
   "ON CONFLICT (id) DO UPDATE SET " +
-  mutableColumns + "," +
-  "embedding=CASE WHEN " + changedText + " THEN NULL ELSE j.embedding END," +
-  "last_seen_at=now()";
+  mutableColumns + ",last_seen_at=now()";
 
 for (const batch of chunked(rows, 250)) {
   await db.query(upsertSql, [JSON.stringify(batch)]);
@@ -125,11 +200,42 @@ await db.query(
   [ids]
 );
 
-await db.query(
-  "DELETE FROM public.analytics_events WHERE created_at < now()-interval '30 days'"
+const touched = await db.query(
+  "SELECT count(*)::int AS count FROM public.jobs WHERE last_seen_at >= $1::timestamptz AND id = ANY($2::text[])",
+  [syncStartedAt, ids]
 );
-await db.query(
-  "DELETE FROM public.ingest_runs WHERE started_at < now()-interval '14 days'"
+const touchedCount = Number(touched[0]?.count || 0);
+if (touchedCount < Math.min(100, jobs.length)) {
+  throw new Error(
+    "Catalog verification failed: only " + touchedCount +
+    " of " + jobs.length + " incoming jobs were marked as seen."
+  );
+}
+
+async function bestEffort(sql, label) {
+  try {
+    if (await tableExists(label.table)) {
+      await db.query(sql);
+      console.log(label.message + " cleaned.");
+    } else {
+      console.log(label.message + " table not present; skipped.");
+    }
+  } catch (error) {
+    console.warn(
+      label.message + " cleanup skipped:",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
+await bestEffort(
+  "DELETE FROM public.analytics_events WHERE created_at < now()-interval '30 days'",
+  { table: "public.analytics_events", message: "Analytics events" }
+);
+
+await bestEffort(
+  "DELETE FROM public.ingest_runs WHERE started_at < now()-interval '14 days'",
+  { table: "public.ingest_runs", message: "Ingest runs" }
 );
 
 console.log(JSON.stringify({
