@@ -14,7 +14,14 @@ function normalize(j:any):Job{return {...j,id:String(j.id||""),title:typeof j.ti
 function row(r:any):Job{return normalize({id:r.id,slug:r.slug,title:r.title,company:r.company_name,description:"",location:r.location,workMode:r.work_mode,type:r.employment_type,salary:r.salary_text,salaryMin:r.salary_min,salaryMax:r.salary_max,currency:r.currency,skills:r.skills,category:r.category,experience:r.experience,publishedAt:r.published_at,updatedAt:r.updated_at,sourceName:r.source_name,sourceUrl:r.source_url,applyUrl:r.apply_url,verified:r.verified,freshness:r.freshness,tags:r.tags,aiSummary:r.ai_summary,aiHighlights:r.ai_highlights,companyId:r.company_id,status:r.status})}
 const PUBLIC_CACHE=path.join(process.cwd(),"data","public-jobs.json");
 const REMOTE_PUBLIC_CACHE_URL=process.env.ROLEPILOT_PUBLIC_CACHE_URL||"https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json";
+const REMOTE_PUBLIC_CACHE_FALLBACK_URL="https://cdn.jsdelivr.net/gh/affanSkhan/job-news@rolepilot-runtime-cache/data/public-jobs.json";
 const REMOTE_CACHE_TTL_MS=5*60*1000;
+
+function cacheBustUrl(raw:string){
+  const u=new URL(raw);
+  u.searchParams.set("rp",String(Math.floor(Date.now()/60_000)));
+  return u.toString();
+}
 let localCache:Job[]|null=null;
 let remoteCache:Job[]|null=null;
 let remoteCacheLoadedAt=0;
@@ -31,22 +38,31 @@ function readPublicCache():Job[]{
 
 async function readPublicCacheAsync():Promise<Job[]>{
   if(remoteCache&&Date.now()-remoteCacheLoadedAt<REMOTE_CACHE_TTL_MS)return remoteCache;
-  try{
-    const init:any={
-      headers:{"accept":"application/json","user-agent":"RolePilotRuntime/1.0"},
-      next:{revalidate:300}
-    };
-    const response=await fetch(REMOTE_PUBLIC_CACHE_URL,init);
-    if(!response.ok)throw new Error("Public cache fetch failed: "+response.status);
-    const parsed=await response.json();
-    const jobs=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
-    if(jobs.length<100)throw new Error("Public cache is unexpectedly small.");
-    remoteCache=jobs;
-    remoteCacheLoadedAt=Date.now();
-    return jobs;
-  }catch{
-    return readPublicCache();
+
+  const urls=[REMOTE_PUBLIC_CACHE_URL,REMOTE_PUBLIC_CACHE_FALLBACK_URL]
+    .filter((url,index,self)=>Boolean(url)&&self.indexOf(url)===index);
+
+  let lastError="unknown error";
+  for(const url of urls){
+    try{
+      const response=await fetch(cacheBustUrl(url),{
+        cache:"no-store",
+        headers:{"accept":"application/json","user-agent":"RolePilotRuntime/1.1"}
+      });
+      if(!response.ok)throw new Error("Public cache fetch failed: "+response.status);
+      const parsed=await response.json();
+      const jobs=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
+      if(jobs.length<100)throw new Error("Public cache is unexpectedly small.");
+      remoteCache=jobs;
+      remoteCacheLoadedAt=Date.now();
+      return jobs;
+    }catch(error){
+      lastError=error instanceof Error?error.message:String(error);
+    }
   }
+
+  if(remoteCache?.length)return remoteCache;
+  throw new Error("Runtime catalog unavailable: "+lastError);
 }
 function fallbackStats(){
   const jobs=readPublicCache();
