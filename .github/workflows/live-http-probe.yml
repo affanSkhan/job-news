@@ -1,0 +1,45 @@
+name: RolePilot Live HTTP Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-http-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe production endpoints
+        shell: bash
+        run: |
+          set -u
+          echo "DNS:"
+          getent hosts jobs.affan.tech || true
+
+          echo
+          echo "HEALTH HEADERS:"
+          curl -sS -I --connect-timeout 10 --max-time 20 https://jobs.affan.tech/api/health || true
+
+          echo
+          echo "HEALTH BODY:"
+          curl -sS --connect-timeout 10 --max-time 20 https://jobs.affan.tech/api/health || true
+
+          echo
+          echo "JOBS HEADERS:"
+          curl -sS -I --connect-timeout 10 --max-time 20 https://jobs.affan.tech/jobs || true
+
+          echo
+          echo "JOBS BODY MARKERS:"
+          curl -sS --connect-timeout 10 --max-time 20 https://jobs.affan.tech/jobs | python3 -c '
+          import sys,re,html
+          s=html.unescape(sys.stdin.read())
+          print("bytes=",len(s))
+          titles=re.findall(r'<h2[^>]*class="[^"]*title[^"]*"[^>]*>.*?<a[^>]*>(.*?)</a>',s,re.S|re.I)
+          for t in titles[:10]:
+              print("TITLE:",re.sub("<[^>]+>","",t).strip())
+          '
