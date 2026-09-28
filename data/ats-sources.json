@@ -524,15 +524,16 @@
     "priority": 100
   },
   {
-    "id": "gh-phonepe",
-    "name": "Greenhouse · PhonePe",
-    "kind": "greenhouse",
+    "id": "career-phonepe",
+    "name": "PhonePe Careers · Official",
+    "kind": "career_html",
     "board": "phonepe",
-    "url": "https://boards-api.greenhouse.io/v1/boards/phonepe/jobs",
+    "url": "https://job-boards.greenhouse.io/phonepe",
     "enabled": true,
-    "maxJobs": 160,
+    "maxJobs": 50,
     "region": "india",
-    "priority": 100
+    "priority": 100,
+    "pathToken": "/jobs/"
   },
   {
     "id": "gh-groww",
@@ -557,15 +558,16 @@
     "priority": 100
   },
   {
-    "id": "gh-postman",
-    "name": "Greenhouse · Postman",
-    "kind": "greenhouse",
+    "id": "career-postman",
+    "name": "Postman Careers · Official",
+    "kind": "career_html",
     "board": "postman",
-    "url": "https://boards-api.greenhouse.io/v1/boards/postman/jobs",
+    "url": "https://job-boards.greenhouse.io/postman",
     "enabled": true,
-    "maxJobs": 160,
+    "maxJobs": 50,
     "region": "india",
-    "priority": 100
+    "priority": 100,
+    "pathToken": "/jobs/"
   },
   {
     "id": "gh-motive",
@@ -601,25 +603,36 @@
     "priority": 100
   },
   {
-    "id": "career-swiggy",
-    "name": "Swiggy Careers · Official",
-    "kind": "career_html",
-    "url": "https://careers.swiggy.in/explore-jobs",
-    "pathToken": "/job",
+    "id": "gh-tekion",
+    "name": "Greenhouse · Tekion",
+    "kind": "greenhouse",
+    "board": "tekion",
+    "url": "https://boards-api.greenhouse.io/v1/boards/tekion/jobs",
     "enabled": true,
-    "maxJobs": 20,
-    "region": "india",
-    "priority": 95
+    "maxJobs": 150,
+    "region": "india-capable",
+    "priority": 90
   },
   {
-    "id": "career-cred",
-    "name": "CRED Careers · Official",
-    "kind": "career_html",
-    "url": "https://careers.cred.club/openings",
-    "pathToken": "/openings/",
+    "id": "gh-zeta-global",
+    "name": "Greenhouse · Zeta Global",
+    "kind": "greenhouse",
+    "board": "zetaglobal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/zetaglobal/jobs",
     "enabled": true,
-    "maxJobs": 20,
-    "region": "india",
-    "priority": 95
+    "maxJobs": 120,
+    "region": "india-capable",
+    "priority": 85
+  },
+  {
+    "id": "lever-netomi",
+    "name": "Lever · Netomi",
+    "kind": "lever",
+    "site": "netomi",
+    "url": "https://api.lever.co/v0/postings/netomi",
+    "enabled": true,
+    "maxJobs": 100,
+    "region": "india-capable",
+    "priority": 85
   }
 ]
