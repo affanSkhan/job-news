@@ -1,0 +1,35 @@
+name: RolePilot Force Netlify Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/netlify-force-deploy.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${NETLIFY_AUTH_TOKEN}" || { echo "::error::NETLIFY_AUTH_TOKEN secret is not configured"; exit 1; }
+          test -n "${NETLIFY_SITE_ID}" || { echo "::error::NETLIFY_SITE_ID secret is not configured"; exit 1; }
+          echo "Netlify credentials are configured."
+
+      - name: Deploy production
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes netlify-cli@latest deploy --prod --dir=. --site="${NETLIFY_SITE_ID}" --auth="${NETLIFY_AUTH_TOKEN}" --build
