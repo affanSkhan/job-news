@@ -17,29 +17,28 @@ jobs:
       - name: Probe production endpoints
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
+
           echo "DNS:"
-          getent hosts jobs.affan.tech || true
+          getent hosts jobs.affan.tech
 
           echo
-          echo "HEALTH HEADERS:"
-          curl -sS -I --connect-timeout 10 --max-time 20 https://jobs.affan.tech/api/health || true
+          echo "HEALTH:"
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20             https://jobs.affan.tech/api/health
 
           echo
-          echo "HEALTH BODY:"
-          curl -sS --connect-timeout 10 --max-time 20 https://jobs.affan.tech/api/health || true
+          echo "JOBS:"
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30             https://jobs.affan.tech/jobs > /tmp/jobs.html
 
-          echo
-          echo "JOBS HEADERS:"
-          curl -sS -I --connect-timeout 10 --max-time 20 https://jobs.affan.tech/jobs || true
+          python3 - <<'PY'
+          import html
+          import re
+          from pathlib import Path
 
-          echo
-          echo "JOBS BODY MARKERS:"
-          curl -sS --connect-timeout 10 --max-time 20 https://jobs.affan.tech/jobs | python3 -c '
-          import sys,re,html
-          s=html.unescape(sys.stdin.read())
-          print("bytes=",len(s))
-          titles=re.findall(r'<h2[^>]*class="[^"]*title[^"]*"[^>]*>.*?<a[^>]*>(.*?)</a>',s,re.S|re.I)
+          s=html.unescape(Path("/tmp/jobs.html").read_text(encoding="utf-8",errors="ignore"))
+          print("html_bytes=",len(s))
+          titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
+          titles=[re.sub(r"<[^>]+>","",t).strip() for t in titles]
           for t in titles[:10]:
-              print("TITLE:",re.sub("<[^>]+>","",t).strip())
-          '
+              print("TITLE:",t)
+          PY
