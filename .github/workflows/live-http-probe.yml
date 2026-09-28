@@ -24,11 +24,11 @@ jobs:
 
           echo
           echo "HEALTH:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20             https://jobs.affan.tech/api/health
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20             https://jobs.affan.tech/api/health?probe=runtime
 
           echo
           echo "JOBS:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30             https://jobs.affan.tech/jobs > /tmp/jobs.html
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30             https://jobs.affan.tech/jobs?probe=runtime > /tmp/jobs.html
 
           python3 - <<'PY'
           import html
