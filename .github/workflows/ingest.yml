@@ -1,10 +1,11 @@
 name: RolePilot Radar Intelligence Pipeline
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/refresh-now"
   schedule:
     # Twice daily at 9:17 AM and 9:17 PM Asia/Kolkata (12 hours apart).
-    # Expressed in UTC to keep scheduling unambiguous across Actions runners.
-    # 03:47 UTC = 09:17 IST; 15:47 UTC = 21:17 IST.
     - cron: "47 3,15 * * *"
 
 permissions:
@@ -12,8 +13,6 @@ permissions:
 
 concurrency:
   group: rolepilot-intelligence
-  # Never cancel a healthy ingestion just because the next recovery trigger fired.
-  # The freshness guard prevents redundant work; pending runs are automatically collapsed.
   cancel-in-progress: false
 
 jobs:
@@ -31,13 +30,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             echo "Non-scheduled event: run ingestion."
             exit 0
           fi
-
           META_URL="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json"
           if meta="$(curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 20 "$META_URL")"; then
             generated_at="$(printf "%s" "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("generatedAt",""))')"
@@ -54,9 +51,9 @@ jobs:
           else
             echo "::warning::Could not read runtime catalog metadata; running ingestion defensively."
           fi
-
           echo "should_run=true" >> "$GITHUB_OUTPUT"
           echo "Catalog is stale or unavailable; run ingestion."
+
       - name: Setup Node 20
         if: steps.freshness.outputs.should_run == 'true'
         uses: actions/setup-node@v4
@@ -93,6 +90,19 @@ jobs:
         if: steps.freshness.outputs.should_run == 'true' && github.event_name != 'schedule'
         run: npx --yes tsx scripts/test-matching.mjs
 
+      - name: Remove static/demo listings from public feed
+        if: steps.freshness.outputs.should_run == 'true'
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("data/ats-sources.json")
+          sources=json.loads(p.read_text())
+          sources=[s for s in sources if s.get("kind") != "static_job"]
+          p.write_text(json.dumps(sources,indent=2,ensure_ascii=False)+"\n")
+          print("Live ATS source definitions:",len(sources))
+          PY
+
       - name: Discover fresh opportunities
         id: ingest
         if: steps.freshness.outputs.should_run == 'true'
@@ -114,15 +124,12 @@ jobs:
           node --input-type=module - <<'NODE'
           import fs from "node:fs";
           const jobs = JSON.parse(fs.readFileSync("data/public-jobs.json", "utf8"));
-          if (!Array.isArray(jobs) || jobs.length < 100) {
-            throw new Error("Public cache is unexpectedly small.");
-          }
+          if (!Array.isArray(jobs) || jobs.length < 100) throw new Error("Public cache is unexpectedly small.");
           for (const [index, job] of jobs.entries()) {
-            if (!job?.id || !job?.slug || !job?.title || !job?.company || !job?.applyUrl) {
-              throw new Error(`Invalid public job at index ${index}`);
-            }
+            if (!job?.id || !job?.slug || !job?.title || !job?.company || !job?.applyUrl) throw new Error(`Invalid public job at index ${index}`);
+            if (job.sourceKind === "static_job") throw new Error(`Static job leaked into public cache at index ${index}`);
           }
-          console.log(`Validated ${jobs.length} public jobs.`);
+          console.log(`Validated ${jobs.length} live public jobs.`);
           NODE
 
       - name: Publish runtime catalog branch
@@ -131,14 +138,11 @@ jobs:
           set -euo pipefail
           test -s data/public-jobs.json
           test -s data/public-jobs-meta.json
-
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           mkdir -p /tmp/rolepilot-runtime-cache
           cp data/public-jobs.json /tmp/rolepilot-runtime-cache/public-jobs.json
           cp data/public-jobs-meta.json /tmp/rolepilot-runtime-cache/public-jobs-meta.json
-
           git checkout --orphan rolepilot-runtime-cache
           git rm -rf .
           cp /tmp/rolepilot-runtime-cache/public-jobs.json data/public-jobs.json
@@ -146,5 +150,4 @@ jobs:
           git add data/public-jobs.json data/public-jobs-meta.json
           git commit -m "chore: refresh runtime catalog"
           git push --force origin HEAD:rolepilot-runtime-cache
-
           echo "Published runtime catalog branch."
