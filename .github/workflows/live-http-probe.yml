@@ -20,22 +20,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 90 "https://raw.githubusercontent.com/affanSkhan/job-news/main/data/public-jobs.json?probe=$(date +%s)" -o /tmp/main.json
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 90 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" -o /tmp/runtime.json
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 90 \
+            "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" \
+            -o /tmp/runtime.json
+
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 \
+            "https://jobs.affan.tech/api/health?probe=$(date +%s)" \
+            -o /tmp/health.json
+
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 \
+            "https://jobs.affan.tech/jobs?probe=$(date +%s)" \
+            -o /tmp/live.html
+
           python3 - <<'PY'
-          import json
-          old=json.load(open('/tmp/main.json'))
-          new=json.load(open('/tmp/runtime.json'))
-          old_ids={str(j.get('id')) for j in old}
-          added=[j for j in new if str(j.get('id')) not in old_ids]
-          print('BUNDLED_COUNT=',len(old))
-          print('RUNTIME_COUNT=',len(new))
-          print('NEW_RUNTIME_JOBS=',len(added))
-          for j in sorted(added,key=lambda x:x.get('publishedAt') or '',reverse=True)[:20]:
-              print('NEW_JOB=',j.get('title'),'|',j.get('company'),'|',j.get('publishedAt'))
-          assert len(new)>len(old), 'Runtime catalog did not grow beyond bundled catalog'
-          assert added, 'No new runtime jobs detected'
+          import json,re,html
+          from pathlib import Path
+          runtime=json.loads(Path("/tmp/runtime.json").read_text())
+          health=json.loads(Path("/tmp/health.json").read_text())
+          page=html.unescape(Path("/tmp/live.html").read_text(encoding="utf-8",errors="ignore"))
+          titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',page,re.S|re.I)
+          titles=[re.sub(r"<[^>]+>","",t).strip() for t in titles]
+          runtime_count=len(runtime)
+          active=int(health.get("activeJobs",0))
+          expected=runtime[0].get("title","") if runtime else ""
+          print("RUNTIME_COUNT=",runtime_count)
+          print("ACTIVE_JOBS=",active)
+          print("RUNTIME_TOP_TITLE=",expected)
+          print("LIVE_TOP_TITLE=",titles[0] if titles else "")
+          print("LIVE_LAST_RUN=",((health.get("lastRun") or {}).get("started_at")))
+          assert runtime_count >= 300, "Runtime catalog unexpectedly small"
+          assert active == runtime_count, f"Health count {active} != runtime count {runtime_count}"
+          assert titles, "No live job cards detected"
+          assert expected in titles[:10], "Fresh runtime top role is not present in live job cards"
           PY
-          echo "LIVE_HEALTH:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 "https://jobs.affan.tech/api/health?probe=$(date +%s)"
-          echo "LIVE_PRODUCTION_OK=1"
+
+          echo "LIVE_PRODUCTION_VERIFIED=1"
