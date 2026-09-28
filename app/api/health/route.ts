@@ -32,7 +32,7 @@ export async function GET(req:Request){
   let lastRun=null;
 
   try{
-    const meta=JSON.parse(fs.readFileSync(path.join(process.cwd(),"data","public-jobs-meta.json"),"utf8"));
+    const response=await fetch("https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json",{cache:"no-store",headers:{"accept":"application/json","user-agent":"RolePilotHealth/1.0"}});\n    if(!response.ok)throw new Error("Runtime catalog metadata fetch failed: "+response.status);\n    const meta=await response.json();
     activeJobs=Number(meta.count||0);
     lastRun={started_at:meta.generatedAt,status:"cache",jobs_upserted:meta.count};
   }catch{}
