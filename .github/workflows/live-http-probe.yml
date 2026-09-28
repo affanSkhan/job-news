@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/live-http-probe.yml"
 
+# Final quality-mix verification trigger.
+
 permissions:
   contents: read
 
