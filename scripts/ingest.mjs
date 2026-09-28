@@ -62,7 +62,7 @@ async function mapWithConcurrency(items,limit,worker){
   return results;
 }
 const envTargets=[];for(const board of(process.env.GREENHOUSE_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"greenhouse:"+board,name:"Greenhouse · "+board,kind:"greenhouse",board,url:"https://boards-api.greenhouse.io/v1/boards/"+board+"/jobs",enabled:true});for(const site of(process.env.LEVER_SITES||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"lever:"+site,name:"Lever · "+site,kind:"lever",site,url:"https://api.lever.co/v0/postings/"+site,enabled:true});for(const board of(process.env.ASHBY_BOARDS||"").split(",").map(s=>s.trim()).filter(Boolean))envTargets.push({id:"ashby:"+board,name:"Ashby · "+board,kind:"ashby",board,url:"https://api.ashbyhq.com/posting-api/job-board/"+board,enabled:true});
-const SOURCES=[...baseSources,...atsSources,...envTargets],previousRaw=JSON.parse(await fs.readFile(OUT,"utf8").catch(()=>"[]")),previous=previousRaw.filter(j=>j.sourceKind!=="ai_web_discovery" && j.sourceKind!=="career_html"),webDiscovered=JSON.parse(await fs.readFile("data/web-discovered-jobs.json","utf8").catch(()=>"[]")),byId=new Map(previous.map(j=>[j.id,j]));for(const j of webDiscovered)byId.set(j.id,{...(byId.get(j.id)||{}),...j});let totalSeen=0;const stats=[];
+const SOURCES=[...baseSources,...atsSources,...envTargets],previousRaw=JSON.parse(await fs.readFile(OUT,"utf8").catch(()=>"[]")),previous=previousRaw.filter(j=>j.sourceKind!=="ai_web_discovery" && j.sourceKind!=="career_html"),webDiscovered=JSON.parse(await fs.readFile("data/web-discovered-jobs.json","utf8").catch(()=>"[]")),byId=new Map(previous.map(j=>[j.id,j]));for(const j of webDiscovered)byId.set(j.id,{...(byId.get(j.id)||{}),...j,verified:false,tags:["ai-discovered","unverified-source"]});let totalSeen=0;const stats=[];
 const sourceResults=await mapWithConcurrency(SOURCES.filter(s=>s.enabled),6,async src=>{
   try{
     const all=await collect(src),maxJobs=Number(src.maxJobs||0),list=maxJobs>0?all.slice(0,maxJobs):all;
@@ -81,7 +81,8 @@ for(const result of sourceResults){
   stats.push({id:src.id,ok,count,error});
 }
 function ensureFingerprint(j){const title=String(j?.title||"Opportunity"),company=String(j?.company||"Unknown company"),location=String(j?.location||"Remote"),fingerprint=stableFingerprint({title,company,location,applyUrl:j?.applyUrl||j?.sourceUrl});return{...j,id:String(j?.id||fingerprint),fingerprint,slug:String(j?.slug||(`${slug(title+"-"+company)}-${fingerprint}`))}}
-const normalized=[...byId.values()].map(ensureFingerprint),deduped=dedupeJobs(normalized),cutoff=Date.now()-60*24*60*60*1000,candidates=deduped.filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl&&retainOpportunity(j));
+const trustedSourceKind=/^(greenhouse|lever|ashby|career_html)$/i;
+const normalized=[...byId.values()].map(j=>({...ensureFingerprint(j),verified:trustedSourceKind.test(String(j?.sourceKind||"")),tags:trustedSourceKind.test(String(j?.sourceKind||""))?["official-source","direct-employer"]:["aggregated-source"]})),deduped=dedupeJobs(normalized),cutoff=Date.now()-60*24*60*60*1000,candidates=deduped.filter(j=>Date.parse(j.publishedAt||j.updatedAt)>=cutoff&&j.applyUrl&&retainOpportunity(j));
 const opportunityScore=j=>((isIndiaJob(j)?100000:0)+(j.verified?30000:0)+((j.experience==="fresher"||j.type==="internship")?20000:0)+(isTechJob(j)?10000:0)+((j.workMode==="remote"&&isIndiaJob(j))?3000:0));
 const ranked=(a,b)=>opportunityScore(b)-opportunityScore(a)||(Date.parse(b.publishedAt||b.updatedAt)-Date.parse(a.publishedAt||a.updatedAt));
 const indiaCandidates=candidates.filter(isIndiaJob).sort(ranked),globalCandidates=candidates.filter(j=>!isIndiaJob(j)).sort(ranked);
