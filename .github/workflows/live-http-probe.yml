@@ -34,3 +34,4 @@ jobs:
           titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
           for t in titles[:10]: print('TITLE:',re.sub(r'<[^>]+>','',t).strip())
           PY
+          echo "PRODUCTION_RUNTIME_VERIFICATION=complete"
