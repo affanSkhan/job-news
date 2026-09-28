@@ -1,0 +1,78 @@
+name: RolePilot Compact Runtime Catalog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/compact-runtime-catalog.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch current runtime catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 120             "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json"             -o /tmp/public-jobs.json
+          wc -c /tmp/public-jobs.json
+
+      - name: Compact runtime catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          src=Path("/tmp/public-jobs.json")
+          jobs=json.loads(src.read_text())
+          keep=[
+            "id","slug","title","company","location","workMode","type","salary",
+            "salaryMin","salaryMax","currency","skills","category","experience",
+            "publishedAt","updatedAt","sourceName","sourceUrl","applyUrl",
+            "verified","freshness","tags","aiSummary","aiHighlights","companyId","status"
+          ]
+
+          compact=[]
+          for job in jobs:
+            row={k:job[k] for k in keep if k in job and job[k] not in (None,"",[],{})}
+            # Descriptions are the largest payload and are not required by the list UI.
+            # Keep AI summary/highlights for concise role context.
+            compact.append(row)
+
+          out=Path("/tmp/compact-public-jobs.json")
+          out.write_text(json.dumps(compact,separators=(",",":"),ensure_ascii=False))
+          print("jobs=",len(compact))
+          print("compact_bytes=",out.stat().st_size)
+          PY
+
+      - name: Publish compact runtime branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin rolepilot-runtime-cache
+          git checkout --orphan rolepilot-runtime-cache
+          git rm -rf . || true
+          mkdir -p data
+          cp /tmp/compact-public-jobs.json data/public-jobs.json
+          cp data/public-jobs-meta.json /tmp/meta.json 2>/dev/null || true
+          if [ -f /tmp/meta.json ]; then
+            cp /tmp/meta.json data/public-jobs-meta.json
+          else
+            curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30               "https://raw.githubusercontent.com/affanSkhan/job-news/main/data/public-jobs-meta.json"               -o data/public-jobs-meta.json
+          fi
+          git config user.name "RolePilot Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/public-jobs.json data/public-jobs-meta.json
+          git commit -m "chore: compact runtime catalog"
+          git push --force origin HEAD:rolepilot-runtime-cache
