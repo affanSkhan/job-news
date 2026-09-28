@@ -132,6 +132,27 @@ jobs:
           console.log(`Validated ${jobs.length} live public jobs.`);
           NODE
 
+      - name: Validate India and verified quality mix
+        if: steps.freshness.outputs.should_run == 'true' && steps.ingest.outcome == 'success'
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          jobs=json.loads(Path("data/public-jobs.json").read_text())
+          terms=("india","bengaluru","bangalore","hyderabad","pune","mumbai","delhi","gurgaon","gurugram","noida","chennai","kolkata","ahmedabad","jaipur","kochi","indore","nagpur")
+          verified=sum(bool(j.get("verified")) for j in jobs)
+          india=sum(any(t in str(j.get("location","")).lower() for t in terms) for j in jobs)
+          fresher=sum(j.get("experience")=="fresher" or j.get("type")=="internship" for j in jobs)
+          print(f"QUALITY_MIX total={len(jobs)} verified={verified} india={india} fresher_or_intern={fresher}")
+          if any(j.get("sourceKind")=="static_job" for j in jobs):
+              raise SystemExit("Static/demo listing leaked into public cache.")
+          if len(jobs) < 300:
+              raise SystemExit("Quality catalog unexpectedly small.")
+          if verified < 100:
+              raise SystemExit("Verified-source coverage unexpectedly low.")
+          if india < 150:
+              raise SystemExit("India coverage unexpectedly low.")
+
       - name: Publish runtime catalog branch
         if: steps.freshness.outputs.should_run == 'true' && steps.ingest.outcome == 'success'
         run: |
