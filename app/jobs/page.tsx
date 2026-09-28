@@ -6,6 +6,9 @@ import {semanticSearch} from "../../lib/search";
 import {isDirectApplication} from "../../lib/application";
 import AdSlot from "../components/ad-slot";
 
+export const dynamic="force-dynamic";
+export const revalidate=300;
+
 const INDIA_TERMS=/india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i;
 
 function categoryMatch(j:Job,value:string){
@@ -91,7 +94,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<Reco
         <div>
           <div className="eyebrow">{q?"Semantic discovery":india?"India opportunity radar":"Live opportunity index"}</div>
           <h1>{q?<>Opportunities related to “{q}”</>:india?"India jobs & internships":"Fresh opportunities"}</h1>
-          <p>{sorted.length.toLocaleString()} active direct-employer matches · refreshed every 30 minutes</p>
+          <p>{sorted.length.toLocaleString()} active direct-employer matches · radar refreshes twice daily</p>
         </div>
         <Link className="chip active" href="/jobs">Clear filters</Link>
       </div>
