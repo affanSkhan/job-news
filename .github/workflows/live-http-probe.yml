@@ -14,31 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Probe production endpoints
+      - name: Probe production and runtime catalog
         shell: bash
         run: |
           set -euo pipefail
-
-          echo "DNS:"
-          getent hosts jobs.affan.tech
-
+          echo "RUNTIME META FROM GITHUB RAW:"
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json?probe=$(date +%s)"
           echo
           echo "HEALTH:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20             https://jobs.affan.tech/api/health?probe=runtime
-
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 "https://jobs.affan.tech/api/health?probe=$(date +%s)"
           echo
           echo "JOBS:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30             https://jobs.affan.tech/jobs?probe=runtime > /tmp/jobs.html
-
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://jobs.affan.tech/jobs?probe=$(date +%s)" > /tmp/jobs.html
           python3 - <<'PY'
-          import html
-          import re
+          import html,re
           from pathlib import Path
-
-          s=html.unescape(Path("/tmp/jobs.html").read_text(encoding="utf-8",errors="ignore"))
-          print("html_bytes=",len(s))
+          s=html.unescape(Path('/tmp/jobs.html').read_text(encoding='utf-8',errors='ignore'))
+          print('html_bytes=',len(s))
           titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
-          titles=[re.sub(r"<[^>]+>","",t).strip() for t in titles]
-          for t in titles[:10]:
-              print("TITLE:",t)
+          for t in titles[:10]: print('TITLE:',re.sub(r'<[^>]+>','',t).strip())
           PY
