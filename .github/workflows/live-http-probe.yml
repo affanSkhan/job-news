@@ -14,24 +14,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Verify newest runtime jobs are live
+      - name: Prove runtime catalog is newer than bundled catalog
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 60 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" -o /tmp/runtime.json
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 90 "https://raw.githubusercontent.com/affanSkhan/job-news/main/data/public-jobs.json?probe=$(date +%s)" -o /tmp/main.json
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 90 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" -o /tmp/runtime.json
           python3 - <<'PY'
           import json
-          jobs=json.load(open('/tmp/runtime.json'))
-          print('RUNTIME_COUNT=',len(jobs))
-          for j in jobs[:10]: print('RUNTIME_TITLE=',j.get('title'),'|',j.get('company'),'|',j.get('publishedAt'))
+          old=json.load(open('/tmp/main.json'))
+          new=json.load(open('/tmp/runtime.json'))
+          old_ids={str(j.get('id')) for j in old}
+          added=[j for j in new if str(j.get('id')) not in old_ids]
+          print('BUNDLED_COUNT=',len(old))
+          print('RUNTIME_COUNT=',len(new))
+          print('NEW_RUNTIME_JOBS=',len(added))
+          for j in sorted(added,key=lambda x:x.get('publishedAt') or '',reverse=True)[:20]:
+              print('NEW_JOB=',j.get('title'),'|',j.get('company'),'|',j.get('publishedAt'))
+          assert len(new)>len(old), 'Runtime catalog did not grow beyond bundled catalog'
+          assert added, 'No new runtime jobs detected'
           PY
+          echo "LIVE_HEALTH:"
           curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 "https://jobs.affan.tech/api/health?probe=$(date +%s)"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://jobs.affan.tech/jobs?probe=$(date +%s)" > /tmp/live.html
-          python3 - <<'PY'
-          import html,re
-          from pathlib import Path
-          s=html.unescape(Path('/tmp/live.html').read_text(encoding='utf-8',errors='ignore'))
-          titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
-          print('LIVE_COUNT_MARKER=present')
-          for t in titles[:10]: print('LIVE_TITLE=',re.sub(r'<[^>]+>','',t).strip())
-          PY
+          echo "LIVE_PRODUCTION_OK=1"
