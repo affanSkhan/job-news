@@ -86,7 +86,7 @@ export default function Home(){
 
       <section className="home-mini">
         <div className="container home-mini-inner">
-          <span><b>Fresh</b> every 30 min</span>
+          <span><b>Fresh</b> from twice-daily radar runs</span>
           <span><b>Direct</b> employer links</span>
           <span><b>No account</b> needed to browse</span>
         </div>
