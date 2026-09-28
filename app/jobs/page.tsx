@@ -7,6 +7,7 @@ import {isDirectApplication} from "../../lib/application";
 import AdSlot from "../components/ad-slot";
 
 export const dynamic="force-dynamic";
+// Runtime catalog: always read the replaceable GitHub cache branch.
 export const revalidate=300;
 
 const INDIA_TERMS=/india|bengaluru|bangalore|hyderabad|pune|mumbai|delhi|gurgaon|gurugram|noida|chennai|kolkata|ahmedabad|jaipur|kochi|indore|nagpur/i;
