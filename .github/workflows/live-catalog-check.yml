@@ -1,0 +1,64 @@
+name: RolePilot Live Catalog Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-catalog-check.yml"
+  workflow_run:
+    workflows: ["RolePilot Radar Intelligence Pipeline"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check production catalog against runtime cache
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          META_URL="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json"
+          JOBS_URL="https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json"
+          HEALTH_URL="https://jobs.affan.tech/api/health"
+          JOBS_PAGE_URL="https://jobs.affan.tech/jobs"
+
+          meta="$(curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 "$META_URL")"
+          expected_count="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["count"]))')"
+          expected_generated="$(printf '%s' "$meta" | python3 -c 'import json,sys; print(json.load(sys.stdin)["generatedAt"])')"
+          echo "Expected runtime catalog: $expected_count jobs @ $expected_generated"
+
+          first_job="$(curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 60 "$JOBS_URL" | python3 -c 'import json,sys; j=json.load(sys.stdin)[0]; print(json.dumps({"title":j["title"],"company":j["company"]}))')"
+          expected_title="$(printf '%s' "$first_job" | python3 -c 'import json,sys; print(json.load(sys.stdin)["title"])')"
+          expected_company="$(printf '%s' "$first_job" | python3 -c 'import json,sys; print(json.load(sys.stdin)["company"])')"
+          echo "Expected newest listing: $expected_title @ $expected_company"
+
+          for attempt in $(seq 1 30); do
+            echo "Production verification attempt $attempt/30..."
+
+            health="$(curl -fsSL --retry 2 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 20 "$HEALTH_URL" || true)"
+            if [ -n "$health" ]; then
+              active="$(printf '%s' "$health" | python3 -c 'import json,sys; print(int(json.load(sys.stdin).get("activeJobs",0)))' 2>/dev/null || echo 0)"
+              live_generated="$(printf '%s' "$health" | python3 -c 'import json,sys; print((json.load(sys.stdin).get("lastRun") or {}).get("started_at",""))' 2>/dev/null || true)"
+              echo "Live health: activeJobs=$active lastRun=$live_generated"
+
+              page="$(curl -fsSL --retry 2 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 "$JOBS_PAGE_URL" || true)"
+              if [ "$active" -eq "$expected_count" ] && printf '%s' "$page" | grep -Fq "$expected_title"; then
+                echo "PASS: production is serving the fresh runtime catalog."
+                exit 0
+              fi
+            fi
+
+            sleep 30
+          done
+
+          echo "::error::Production catalog did not converge to the published runtime catalog within 15 minutes."
+          echo "Expected count: $expected_count"
+          echo "Expected newest listing: $expected_title @ $expected_company"
+          exit 1
