@@ -529,11 +529,12 @@
     "kind": "career_html",
     "board": "phonepe",
     "url": "https://job-boards.greenhouse.io/phonepe",
-    "enabled": true,
+    "enabled": false,
     "maxJobs": 50,
     "region": "india",
     "priority": 100,
-    "pathToken": "/jobs/"
+    "pathToken": "/jobs/",
+    "disabledReason": "Live endpoint returned 404 during 2026-09-28 pipeline probe."
   },
   {
     "id": "gh-groww",
@@ -563,11 +564,12 @@
     "kind": "career_html",
     "board": "postman",
     "url": "https://job-boards.greenhouse.io/postman",
-    "enabled": true,
+    "enabled": false,
     "maxJobs": 50,
     "region": "india",
     "priority": 100,
-    "pathToken": "/jobs/"
+    "pathToken": "/jobs/",
+    "disabledReason": "Live endpoint returned 404 during 2026-09-28 pipeline probe."
   },
   {
     "id": "gh-motive",
@@ -608,10 +610,11 @@
     "kind": "greenhouse",
     "board": "tekion",
     "url": "https://boards-api.greenhouse.io/v1/boards/tekion/jobs",
-    "enabled": true,
+    "enabled": false,
     "maxJobs": 150,
     "region": "india-capable",
-    "priority": 90
+    "priority": 90,
+    "disabledReason": "Live endpoint returned 404 during 2026-09-28 pipeline probe."
   },
   {
     "id": "gh-zeta-global",
