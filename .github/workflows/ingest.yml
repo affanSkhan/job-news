@@ -15,9 +15,9 @@ on:
       - "db/migrations/**"
   schedule:
     # Twice daily at 9:17 AM and 9:17 PM Asia/Kolkata (12 hours apart).
-    # The 17-minute offset avoids the busiest top-of-hour scheduling window.
-    - cron: "17 9,21 * * *"
-      timezone: "Asia/Kolkata"
+    # Expressed in UTC to keep scheduling unambiguous across Actions runners.
+    # 03:47 UTC = 09:17 IST; 15:47 UTC = 21:17 IST.
+    - cron: "47 3,15 * * *"
 
 permissions:
   contents: write
