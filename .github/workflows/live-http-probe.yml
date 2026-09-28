@@ -14,24 +14,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Probe production and runtime catalog
+      - name: Compare runtime catalog with production
         shell: bash
         run: |
           set -euo pipefail
-          echo "RUNTIME META FROM GITHUB RAW:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json?probe=$(date +%s)"
-          echo
-          echo "HEALTH:"
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 60 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" -o /tmp/runtime.json
+          echo "RUNTIME FIRST 10:"
+          python3 - <<'PY'
+          import json
+          jobs=json.load(open('/tmp/runtime.json'))
+          print('runtime_count=',len(jobs))
+          for j in jobs[:10]: print('RUNTIME_TITLE:',j.get('title'))
+          PY
+          echo "PRODUCTION HEALTH:"
           curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 "https://jobs.affan.tech/api/health?probe=$(date +%s)"
-          echo
-          echo "JOBS:"
-          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://jobs.affan.tech/jobs?probe=$(date +%s)" > /tmp/jobs.html
+          echo "PRODUCTION FIRST 10:"
+          curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://jobs.affan.tech/jobs?probe=$(date +%s)" > /tmp/live.html
           python3 - <<'PY'
           import html,re
           from pathlib import Path
-          s=html.unescape(Path('/tmp/jobs.html').read_text(encoding='utf-8',errors='ignore'))
-          print('html_bytes=',len(s))
+          s=html.unescape(Path('/tmp/live.html').read_text(encoding='utf-8',errors='ignore'))
           titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
-          for t in titles[:10]: print('TITLE:',re.sub(r'<[^>]+>','',t).strip())
+          for t in titles[:10]: print('LIVE_TITLE:',re.sub(r'<[^>]+>','',t).strip())
           PY
-          echo "PRODUCTION_RUNTIME_VERIFICATION=complete"
