@@ -8,7 +8,7 @@ on:
       - ".github/workflows/db-maintenance.yml"
       - "scripts/sync-public-catalog.mjs"
   schedule:
-    - cron: "17 */6 * * *"
+    # Secondary Neon is non-critical because the public GitHub runtime cache is authoritative.\n    # Sync it twice daily to reduce free-tier database writes/egress.\n    - cron: "17 3,15 * * *"
 
 permissions:
   contents: read
