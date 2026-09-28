@@ -24,7 +24,8 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 120             "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json"             -o /tmp/public-jobs.json
-          wc -c /tmp/public-jobs.json
+          curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30             "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs-meta.json"             -o /tmp/current-meta.json
+          wc -c /tmp/public-jobs.json /tmp/current-meta.json
 
       - name: Compact runtime catalog
         shell: bash
@@ -65,12 +66,7 @@ jobs:
           git rm -rf . || true
           mkdir -p data
           cp /tmp/compact-public-jobs.json data/public-jobs.json
-          cp data/public-jobs-meta.json /tmp/meta.json 2>/dev/null || true
-          if [ -f /tmp/meta.json ]; then
-            cp /tmp/meta.json data/public-jobs-meta.json
-          else
-            curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30               "https://raw.githubusercontent.com/affanSkhan/job-news/main/data/public-jobs-meta.json"               -o data/public-jobs-meta.json
-          fi
+          cp /tmp/current-meta.json data/public-jobs-meta.json
           git config user.name "RolePilot Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/public-jobs.json data/public-jobs-meta.json
