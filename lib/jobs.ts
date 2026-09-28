@@ -16,103 +16,30 @@ const PUBLIC_CACHE=path.join(process.cwd(),"data","public-jobs.json");
 const REMOTE_PUBLIC_CACHE_URL=process.env.ROLEPILOT_PUBLIC_CACHE_URL||"https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json";
 const REMOTE_PUBLIC_CACHE_FALLBACK_URL="https://cdn.jsdelivr.net/gh/affanSkhan/job-news@rolepilot-runtime-cache/data/public-jobs.json";
 const REMOTE_CACHE_TTL_MS=5*60*1000;
-
-function cacheBustUrl(raw:string){
-  const u=new URL(raw);
-  u.searchParams.set("rp",String(Math.floor(Date.now()/60_000)));
-  return u.toString();
-}
+function cacheBustUrl(raw:string){const u=new URL(raw);u.searchParams.set("rp",String(Math.floor(Date.now()/60_000)));return u.toString()}
 let localCache:Job[]|null=null;
 let remoteCache:Job[]|null=null;
 let remoteCacheLoadedAt=0;
-
-function readPublicCache():Job[]{
-  if(localCache)return localCache;
-  try{
-    const raw=fs.readFileSync(PUBLIC_CACHE,"utf8");
-    const parsed=JSON.parse(raw);
-    localCache=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
-    return localCache;
-  }catch{return []}
-}
-
+function readPublicCache():Job[]{if(localCache)return localCache;try{const raw=fs.readFileSync(PUBLIC_CACHE,"utf8");const parsed=JSON.parse(raw);localCache=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);return localCache}catch{return []}}
 async function readPublicCacheAsync():Promise<Job[]>{
   if(remoteCache&&Date.now()-remoteCacheLoadedAt<REMOTE_CACHE_TTL_MS)return remoteCache;
-
-  const urls=[REMOTE_PUBLIC_CACHE_URL,REMOTE_PUBLIC_CACHE_FALLBACK_URL]
-    .filter((url,index,self)=>Boolean(url)&&self.indexOf(url)===index);
-
+  const urls=[REMOTE_PUBLIC_CACHE_URL,REMOTE_PUBLIC_CACHE_FALLBACK_URL].filter((url,index,self)=>Boolean(url)&&self.indexOf(url)===index);
   let lastError="unknown error";
-  for(const url of urls){
-    try{
-      const response=await fetch(cacheBustUrl(url),{
-        cache:"no-store",
-        headers:{"accept":"application/json","user-agent":"RolePilotRuntime/1.1"}
-      });
-      if(!response.ok)throw new Error("Public cache fetch failed: "+response.status);
-      const parsed=await response.json();
-      const jobs=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);
-      if(jobs.length<100)throw new Error("Public cache is unexpectedly small.");
-      remoteCache=jobs;
-      remoteCacheLoadedAt=Date.now();
-      return jobs;
-    }catch(error){
-      lastError=error instanceof Error?error.message:String(error);
-    }
-  }
-
+  for(const url of urls){try{const response=await fetch(cacheBustUrl(url),{cache:"no-store",headers:{"accept":"application/json","user-agent":"RolePilotRuntime/1.1"}});if(!response.ok)throw new Error("Public cache fetch failed: "+response.status);const parsed=await response.json();const jobs=dedupeJobs(Array.isArray(parsed)?parsed.map(normalize):[]);if(jobs.length<100)throw new Error("Public cache is unexpectedly small.");remoteCache=jobs;remoteCacheLoadedAt=Date.now();return jobs}catch(error){lastError=error instanceof Error?error.message:String(error)}}
   if(remoteCache?.length)return remoteCache;
   throw new Error("Runtime catalog unavailable: "+lastError);
 }
-function fallbackStats(){
-  const jobs=readPublicCache();
-  return{
-    active:jobs.length,
-    today:jobs.filter(j=>j.freshness==="today").length,
-    internships:jobs.filter(j=>j.type==="internship").length,
-    remote:jobs.filter(j=>j.workMode==="remote").length
-  };
-}const JOB_COLUMNS="id,slug,title,company_name,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
+function sortNewestFirst(jobs:Job[]){return [...jobs].sort((a,b)=>{const at=Date.parse(a.publishedAt)||Date.parse(a.updatedAt)||0;const bt=Date.parse(b.publishedAt)||Date.parse(b.updatedAt)||0;return bt-at})}
+function fallbackStats(){const jobs=readPublicCache();return{active:jobs.length,today:jobs.filter(j=>j.freshness==="today").length,internships:jobs.filter(j=>j.type==="internship").length,remote:jobs.filter(j=>j.workMode==="remote").length}}
+const JOB_COLUMNS="id,slug,title,company_name,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
 const JOB_DETAIL_COLUMNS="id,slug,title,company_name,description,location,work_mode,employment_type,salary_text,salary_min,salary_max,currency,skills,category,experience,published_at,updated_at,source_name,source_url,apply_url,verified,freshness,tags,ai_summary,ai_highlights,company_id,status";
 const DB_CATALOG_READS=process.env.ROLEPILOT_DB_CATALOG_READS==="1";
-export async function getActiveJobStatsAsync(){
-  const cached=await readPublicCacheAsync();
-  const fallback={
-    active:cached.length,
-    today:cached.filter(j=>j.freshness==="today").length,
-    internships:cached.filter(j=>j.type==="internship").length,
-    remote:cached.filter(j=>j.workMode==="remote").length
-  };
-  if(!DB_CATALOG_READS)return fallback;
-  const sql=getDb();if(!sql)return fallback;
-  try{
-    const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);
-    const r=rows[0]||{};
-    return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}
-  }catch{return fallback}
-}
-export async function getActiveJobsAsync(limit=5000){
-  const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));
-  const cached=await readPublicCacheAsync();
-  if(cached.length)return cached.slice(0,safeLimit);
-  if(!DB_CATALOG_READS)return [];
-  const sql=getDb();if(!sql)return [];
-  try{
-    const data=await sql.query("SELECT "+JOB_COLUMNS+" FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT "+safeLimit,[]);
-    return dedupeJobs(data.map(row))
-  }catch{return []}
-}
-export async function getJobAsync(slug:string){
-  const cached=(await readPublicCacheAsync()).find(j=>j.slug===slug);
-  if(cached)return cached;
-  if(!DB_CATALOG_READS)return undefined;
-  const sql=getDb();if(!sql)return undefined;
-  try{
-    const data=await sql.query("SELECT "+JOB_DETAIL_COLUMNS+" FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1",[slug]);
-    return data[0]?row(data[0]):undefined
-  }catch{return undefined}
-}
+export async function getActiveJobStatsAsync(){const cached=await readPublicCacheAsync();const fallback={active:cached.length,today:cached.filter(j=>j.freshness==="today").length,internships:cached.filter(j=>j.type==="internship").length,remote:cached.filter(j=>j.workMode==="remote").length};if(!DB_CATALOG_READS)return fallback;const sql=getDb();if(!sql)return fallback;try{const rows=await sql.query("SELECT count(*)::int AS active,count(*) FILTER (WHERE freshness='today')::int AS today,count(*) FILTER (WHERE employment_type='internship')::int AS internships,count(*) FILTER (WHERE work_mode='remote')::int AS remote FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days'",[]);const r=rows[0]||{};return{active:Number(r.active||0),today:Number(r.today||0),internships:Number(r.internships||0),remote:Number(r.remote||0)}}catch{return fallback}}
+export async function getActiveJobsAsync(limit=5000){const safeLimit=Math.max(1,Math.min(5000,Math.floor(limit)));const cached=sortNewestFirst(await readPublicCacheAsync());if(cached.length)return cached.slice(0,safeLimit);if(!DB_CATALOG_READS)return [];const sql=getDb();if(!sql)return [];try{const data=await sql.query("SELECT "+JOB_COLUMNS+" FROM public.jobs WHERE status='active' AND coalesce(published_at,updated_at)>=now()-interval '60 days' ORDER BY published_at DESC NULLS LAST LIMIT "+safeLimit,[]);return sortNewestFirst(dedupeJobs(data.map(row)))}catch{return []}}
+export async function getJobAsync(slug:string){const cached=(await readPublicCacheAsync()).find(j=>j.slug===slug);if(cached)return cached;if(!DB_CATALOG_READS)return undefined;const sql=getDb();if(!sql)return undefined;try{const data=await sql.query("SELECT "+JOB_DETAIL_COLUMNS+" FROM public.jobs WHERE slug=$1 AND status='active' LIMIT 1",[slug]);return data[0]?row(data[0]):undefined}catch{return undefined}}
 export function getJobs():Job[]{return readPublicCache()}
 export function getActiveJobs():Job[]{return readPublicCache().filter(j=>j.status==="active")}
 export function getJob(slug:string):Job|undefined{return readPublicCache().find(j=>j.slug===slug)}
-export function titleFor(j:Job){return j.title+" at "+j.company+" — RolePilot"}export function descFor(j:Job){return "Find "+[j.title,"at "+j.company,j.location,j.type,j.salary,j.skills.slice(0,5).join(", ")].filter(Boolean).join(" · ")+". View source details and apply directly through the original employer or job source."}export function companySlug(name:string){return slugify(name)}
+export function titleFor(j:Job){return j.title+" at "+j.company+" — RolePilot"}
+export function descFor(j:Job){return "Find "+[j.title,"at "+j.company,j.location,j.type,j.salary,j.skills.slice(0,5).join(", ")].filter(Boolean).join(" · ")+". View source details and apply directly through the original employer or job source."}
+export function companySlug(name:string){return slugify(name)}
