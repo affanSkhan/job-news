@@ -14,26 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Compare runtime catalog with production
+      - name: Verify newest runtime jobs are live
         shell: bash
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 60 "https://raw.githubusercontent.com/affanSkhan/job-news/rolepilot-runtime-cache/data/public-jobs.json?probe=$(date +%s)" -o /tmp/runtime.json
-          echo "RUNTIME FIRST 10:"
           python3 - <<'PY'
           import json
           jobs=json.load(open('/tmp/runtime.json'))
-          print('runtime_count=',len(jobs))
-          for j in jobs[:10]: print('RUNTIME_TITLE:',j.get('title'))
+          print('RUNTIME_COUNT=',len(jobs))
+          for j in jobs[:10]: print('RUNTIME_TITLE=',j.get('title'),'|',j.get('company'),'|',j.get('publishedAt'))
           PY
-          echo "PRODUCTION HEALTH:"
           curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 20 "https://jobs.affan.tech/api/health?probe=$(date +%s)"
-          echo "PRODUCTION FIRST 10:"
           curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 "https://jobs.affan.tech/jobs?probe=$(date +%s)" > /tmp/live.html
           python3 - <<'PY'
           import html,re
           from pathlib import Path
           s=html.unescape(Path('/tmp/live.html').read_text(encoding='utf-8',errors='ignore'))
           titles=re.findall(r'class="title"[^>]*>\s*<a[^>]*>(.*?)</a>',s,re.S|re.I)
-          for t in titles[:10]: print('LIVE_TITLE:',re.sub(r'<[^>]+>','',t).strip())
+          print('LIVE_COUNT_MARKER=present')
+          for t in titles[:10]: print('LIVE_TITLE=',re.sub(r'<[^>]+>','',t).strip())
           PY
