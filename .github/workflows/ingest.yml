@@ -1,18 +1,6 @@
 name: RolePilot Radar Intelligence Pipeline
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/ingest.yml"
-      - "package.json"
-      - "package-lock.json"
-      - "scripts/**"
-      - "lib/**"
-      - "app/**"
-      - "data/sources.json"
-      - "data/ats-sources.json"
-      - "db/migrations/**"
   schedule:
     # Twice daily at 9:17 AM and 9:17 PM Asia/Kolkata (12 hours apart).
     # Expressed in UTC to keep scheduling unambiguous across Actions runners.
